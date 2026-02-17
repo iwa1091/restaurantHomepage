@@ -1,13 +1,24 @@
-// /resources/js/Pages/Reservation/ReservationForm.jsx
 import { useEffect, useMemo, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "../../../css/pages/reservation/reservation-form.css";
 
-/**
- * 15分刻みで時間スロットを生成
- */
-function generateTimeSlots(start, end, interval = 15) {
+function pad2(n) {
+    return String(n).padStart(2, "0");
+}
+
+function formatDateYMD(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function getWeekOfMonthLikeLaravel(d) {
+    const day = d.getDate();
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    const firstIso = first.getDay() === 0 ? 7 : first.getDay();
+    return Math.ceil((day + firstIso - 1) / 7);
+}
+
+function generateTimeSlots(start, end, interval = 30) {
     const slots = [];
     if (!start || !end) return slots;
 
@@ -15,150 +26,83 @@ function generateTimeSlots(start, end, interval = 15) {
     const [endHour, endMinute] = String(end).split(":").map(Number);
 
     while (hour < endHour || (hour === endHour && minute <= endMinute)) {
-        const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-        slots.push(time);
-
+        slots.push(`${pad2(hour)}:${pad2(minute)}`);
         minute += interval;
         if (minute >= 60) {
             hour += 1;
             minute -= 60;
         }
     }
+
     return slots;
 }
 
-/**
- * JST(ローカル)日付を YYYY-MM-DD で作る（toISOString() 由来のズレを防ぐ）
- */
-function formatDateYMD(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-}
+const PARTY_OPTIONS = [
+    { value: 1, label: "1名" },
+    { value: 2, label: "2名" },
+    { value: 3, label: "3名" },
+    { value: 4, label: "4名" },
+    { value: 5, label: "5名" },
+    { value: 6, label: "6名" },
+    { value: 7, label: "7名" },
+    { value: 8, label: "8名" },
+    { value: 10, label: "10名以上（宴会）" },
+];
 
-/**
- * BusinessHour::getWeekOfMonth(Carbon) と同じ計算
- * PHP: ceil((day + firstDay->dayOfWeekIso - 1) / 7)
- */
-function getWeekOfMonthLikeLaravel(d) {
-    const day = d.getDate();
-    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+const STEP_TITLES = [
+    "日付選択",
+    "人数選択",
+    "時間帯選択",
+    "席タイプ希望",
+    "お客様情報",
+    "備考",
+    "確認・送信",
+];
 
-    // JS: Sun=0..Sat=6 -> ISO: Mon=1..Sun=7
-    const firstIso = first.getDay() === 0 ? 7 : first.getDay();
-    return Math.ceil((day + firstIso - 1) / 7);
-}
-
-/**
- * 現在時刻から12時間以降かどうか（UI表示用の補助）
- * ※API側でも12時間ルールで弾いているが、表示上の判定にも使用
- */
-function isAfter12HoursFromNow(selectedDate, timeHHmm) {
-    if (!timeHHmm) return false;
-    const [hh, mm] = timeHHmm.split(":").map((v) => Number(v));
-    const dt = new Date(
-        selectedDate.getFullYear(),
-        selectedDate.getMonth(),
-        selectedDate.getDate(),
-        hh,
-        mm,
-        0
-    );
-    const limit = new Date(Date.now() + 12 * 60 * 60 * 1000);
-    return dt.getTime() >= limit.getTime();
-}
-
-export default function ReservationForm({ service_id = "" }) {
-    const [date, setDate] = useState(new Date());
-    const [selectedTime, setSelectedTime] = useState("");
-
-    // ✅ menu_price.blade.php から来る service_id を初期値にする（props優先、なければクエリから拾う）
-    const initialServiceId = useMemo(() => {
-        const propId =
-            service_id !== null && service_id !== undefined && String(service_id).trim() !== ""
-                ? String(service_id)
-                : "";
-
-        if (propId) return propId;
-
-        try {
-            const q = new URLSearchParams(window.location.search).get("service_id");
-            return q ? String(q) : "";
-        } catch (e) {
-            return "";
-        }
-    }, [service_id]);
-
-    const [formData, setFormData] = useState(() => ({
-        name: "",
-        phone: "",
-        service_id: initialServiceId,
-        email: "",
-        notes: "",
-    }));
-    const [fieldErrors, setFieldErrors] = useState({});
-
-    const [services, setServices] = useState([]);
-    const [businessHours, setBusinessHours] = useState([]); // 営業時間データ
-    const [availableTimes, setAvailableTimes] = useState([]); // 営業時間から生成した全枠（15分刻み）
-
-    // ✅ 追加：APIの空き枠（○になる開始時刻）
-    const [availableSlots, setAvailableSlots] = useState([]); // [{start,end}]
-    const [availabilityLoading, setAvailabilityLoading] = useState(false);
-
-    const [message, setMessage] = useState("");
-
-    // ✅ 初期service_idが取れたのに formData に入っていない場合だけ補完（保険）
-    useEffect(() => {
-        if (!formData.service_id && initialServiceId) {
-            setFormData((prev) => ({ ...prev, service_id: initialServiceId }));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialServiceId]);
-
-    // サービス一覧の取得
-    useEffect(() => {
-        async function fetchServices() {
-            try {
-                const res = await fetch("/api/services");
-                if (res.ok) {
-                    const data = await res.json();
-                    setServices(data);
-                }
-            } catch (err) {
-                console.error("サービス一覧の取得に失敗:", err);
-            }
-        }
-        fetchServices();
+export default function ReservationForm() {
+    const tomorrow = useMemo(() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + 1);
+        return d;
     }, []);
 
-    // 表示用：選択中サービス
-    const selectedService = useMemo(() => {
-        if (!formData.service_id) return null;
-        return (services || []).find((s) => String(s.id) === String(formData.service_id)) || null;
-    }, [services, formData.service_id]);
+    const [step, setStep] = useState(1);
+    const [date, setDate] = useState(tomorrow);
+    const [selectedTime, setSelectedTime] = useState("");
+    const [availableTimes, setAvailableTimes] = useState([]);
+    const [availableSlots, setAvailableSlots] = useState([]);
+    const [availabilityLoading, setAvailabilityLoading] = useState(false);
+    const [businessHours, setBusinessHours] = useState([]);
 
-    // 営業時間の取得（来月のデータも取得できるように修正）
+    const [formData, setFormData] = useState({
+        party_size: 1,
+        seat_preference: "",
+        name: "",
+        email: "",
+        phone: "",
+        notes: "",
+    });
+
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [message, setMessage] = useState("");
+
     useEffect(() => {
         async function fetchBusinessHours() {
             try {
                 const year = date.getFullYear();
                 const month = date.getMonth() + 1;
-
                 const res = await fetch(`/api/business-hours/weekly?year=${year}&month=${month}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setBusinessHours(Array.isArray(data) ? data : []);
-                }
-            } catch (err) {
-                console.error("営業時間の取得に失敗:", err);
+                if (!res.ok) return;
+                const data = await res.json();
+                setBusinessHours(Array.isArray(data) ? data : []);
+            } catch {
+                setBusinessHours([]);
             }
         }
         fetchBusinessHours();
     }, [date]);
 
-    // 選択された日付に応じて、営業時間から「全枠」を生成
     useEffect(() => {
         if (!Array.isArray(businessHours) || businessHours.length === 0) {
             setAvailableTimes([]);
@@ -178,37 +122,30 @@ export default function ReservationForm({ service_id = "" }) {
             return;
         }
 
-        const slots = generateTimeSlots(hourInfo.open_time, hourInfo.close_time, 15);
-        setAvailableTimes(slots);
+        setAvailableTimes(generateTimeSlots(hourInfo.open_time, hourInfo.close_time, 30));
     }, [date, businessHours]);
 
-    // ✅ 追加：空き枠（○/×判定用）を API から取得（BusinessHour基準 + 12時間ルール込み）
     useEffect(() => {
-        const serviceId = formData.service_id;
-
-        // メニュー未選択なら空き判定できない（全て×扱い）
-        if (!serviceId) {
+        if (!formData.party_size || formData.party_size >= 10) {
             setAvailableSlots([]);
             return;
         }
 
-        const ymd = formatDateYMD(date);
         const controller = new AbortController();
 
         async function fetchAvailability() {
             setAvailabilityLoading(true);
             try {
+                const ymd = formatDateYMD(date);
                 const res = await fetch(
-                    `/api/reservations/check?date=${encodeURIComponent(ymd)}&service_id=${encodeURIComponent(
-                        serviceId
+                    `/api/reservations/check?date=${encodeURIComponent(ymd)}&party_size=${encodeURIComponent(
+                        formData.party_size
                     )}`,
                     { signal: controller.signal }
                 );
-
                 const data = await res.json().catch(() => ({}));
 
                 if (!res.ok) {
-                    console.error("空き枠取得エラー:", data);
                     setAvailableSlots([]);
                     return;
                 }
@@ -216,40 +153,27 @@ export default function ReservationForm({ service_id = "" }) {
                 const slots = Array.isArray(data.available_slots) ? data.available_slots : [];
                 setAvailableSlots(slots);
 
-                // もし選択中の時間が空き枠から外れたら解除
                 if (selectedTime) {
                     const starts = new Set(slots.map((s) => s.start));
-                    if (!starts.has(selectedTime)) {
-                        setSelectedTime("");
-                    }
+                    if (!starts.has(selectedTime)) setSelectedTime("");
                 }
             } catch (err) {
-                if (err?.name !== "AbortError") {
-                    console.error("空き枠取得に失敗:", err);
-                    setAvailableSlots([]);
-                }
+                if (err?.name !== "AbortError") setAvailableSlots([]);
             } finally {
                 setAvailabilityLoading(false);
             }
         }
 
         fetchAvailability();
-
         return () => controller.abort();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, formData.service_id]);
+    }, [date, formData.party_size, selectedTime]);
 
-    // availableSlots から「○になる開始時刻セット」を作る
-    const availableStartSet = useMemo(() => {
-        return new Set((availableSlots || []).map((s) => s.start));
-    }, [availableSlots]);
+    const availableStartSet = useMemo(() => new Set(availableSlots.map((s) => s.start)), [availableSlots]);
 
-    // カレンダーの無効化（休業日など）
     const tileDisabled = ({ date: tileDate }) => {
-        if (!Array.isArray(businessHours) || businessHours.length === 0) {
-            // データ未取得中に全日Disableになるのを避ける
-            return false;
-        }
+        if (tileDate < tomorrow) return true;
+
+        if (!Array.isArray(businessHours) || businessHours.length === 0) return false;
 
         const dayOfWeekNames = ["日", "月", "火", "水", "木", "金", "土"];
         const selectedDay = dayOfWeekNames[tileDate.getDay()];
@@ -262,52 +186,34 @@ export default function ReservationForm({ service_id = "" }) {
         return !dayInfo || !!dayInfo.is_closed;
     };
 
-    // 入力変更ハンドラ
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-
-        // メニュー変更時は選択時間をリセット（空き判定が変わるため）
-        if (name === "service_id") {
-            setSelectedTime("");
-        }
-
-        setFormData({ ...formData, [name]: value });
-        setFieldErrors((prev) => ({ ...prev, [name]: "" }));
+    const handleNext = () => {
+        if (step === 2 && formData.party_size >= 10) return;
+        setStep((s) => Math.min(7, s + 1));
     };
 
-    // 日付変更（range対応しつつ、選択時間をリセット）
-    const handleDateChange = (value) => {
-        const d = Array.isArray(value) ? value[0] : value;
-        setDate(d);
-        setSelectedTime("");
-    };
+    const handleBack = () => setStep((s) => Math.max(1, s - 1));
 
-    // 送信処理
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setMessage("");
         setFieldErrors({});
-
-        if (!formData.service_id) {
-            setMessage("メニューが選択されていません。お品書きページから選択してください。");
-            return;
-        }
+        setMessage("");
 
         if (!selectedTime) {
-            setMessage("時間を選択してください。");
-            return;
-        }
-
-        // UI上でも12時間チェック（最終防波堤はAPI側）
-        if (!isAfter12HoursFromNow(date, selectedTime)) {
-            setMessage("ご予約は現在時刻から12時間以降の枠のみ受付可能です。");
+            setMessage("時間帯を選択してください。");
+            setStep(3);
             return;
         }
 
         const payload = {
-            ...formData,
             date: formatDateYMD(date),
             start_time: selectedTime,
+            party_size: Number(formData.party_size),
+            seat_preference: formData.seat_preference || null,
+            service_id: null,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            notes: formData.notes || null,
         };
 
         try {
@@ -323,216 +229,199 @@ export default function ReservationForm({ service_id = "" }) {
             const data = await response.json().catch(() => ({}));
 
             if (response.ok) {
-                setMessage("✅ ご予約が完了しました！メールをご確認ください。");
-                console.log("予約成功:", data);
-
-                // 入力リセット（service_id は固定のまま維持）
+                setMessage("ご予約を受け付けました。確認メールをご確認ください。");
+                setStep(1);
                 setSelectedTime("");
                 setFormData({
+                    party_size: 1,
+                    seat_preference: "",
                     name: "",
-                    phone: "",
-                    service_id: initialServiceId,
                     email: "",
+                    phone: "",
                     notes: "",
                 });
-                setAvailableSlots([]);
-            } else {
-                if (data.errors) {
-                    const errs = {};
-                    Object.keys(data.errors).forEach((key) => {
-                        errs[key] = Array.isArray(data.errors[key])
-                            ? data.errors[key][0]
-                            : data.errors[key];
-                    });
-                    setFieldErrors(errs);
-                }
-                if (data.message) {
-                    setMessage(data.message);
-                } else if (!data.errors) {
-                    setMessage("⚠️ 予約に失敗しました。");
-                }
+                return;
             }
-        } catch (err) {
-            console.error("送信エラー:", err);
-            setMessage("⚠️ サーバー通信エラーが発生しました。");
-        }
-    };
 
-    // 🔙 メニュー・料金ページへ戻る
-    const handleBack = () => {
-        window.location.href = "/menu_price";
+            if (data.errors) {
+                const errs = {};
+                Object.keys(data.errors).forEach((key) => {
+                    errs[key] = Array.isArray(data.errors[key]) ? data.errors[key][0] : data.errors[key];
+                });
+                setFieldErrors(errs);
+            }
+            setMessage(data.message || "予約に失敗しました。");
+        } catch {
+            setMessage("サーバー通信エラーが発生しました。");
+        }
     };
 
     return (
         <main className="reservation-main">
-            {/* 前のページに戻るボタン */}
-            <div className="reservation-back">
-                <button type="button" onClick={handleBack} className="reservation-back-button">
-                    前のページに戻る
-                </button>
-            </div>
-
-            <h1 className="reservation-title">ご予約フォーム</h1>
-            <p className="reservation-subtitle">
-                ご希望のメニュー・日時をお選びいただき、ご予約ください。<br />
-                お電話でのご予約も承っております（080-9704-9500）
-            </p>
+            <h1 className="reservation-title">テーブル予約</h1>
+            <p className="reservation-subtitle">Step {step}/7: {STEP_TITLES[step - 1]}</p>
 
             <form onSubmit={handleSubmit} className="reservation-form-card" noValidate>
-                {/* ✅ メニュー（表示のみ：menu_price で選択済み想定） */}
-                <div className="reservation-field">
-                    <label className="reservation-label">メニュー</label>
+                {step === 1 ? (
+                    <div className="reservation-field">
+                        <label className="reservation-label">Step 1: ご希望日</label>
+                        <div className="reservation-calendar-wrapper">
+                            <div className="reservation-calendar">
+                                <Calendar onChange={(d) => setDate(Array.isArray(d) ? d[0] : d)} value={date} minDate={tomorrow} tileDisabled={tileDisabled} />
+                            </div>
+                            <p className="reservation-date-text">選択日: {date.toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                ) : null}
 
-                    {!formData.service_id ? (
-                        <p className="reservation-time-note">
-                            ※ メニューが選択されていません。
-                            <button
-                                type="button"
-                                onClick={handleBack}
-                                className="reservation-back-button"
-                            >
-                                メニュー・料金へ戻る
-                            </button>
-                        </p>
-                    ) : selectedService ? (
-                        <p className="reservation-selected-time">
-                            選択中: {selectedService.name}（¥{selectedService.price} /{" "}
-                            {selectedService.duration_minutes}分）{" "}
-                            <button type="button" onClick={handleBack} className="reservation-back-button">
-                                メニューを変更する
-                            </button>
-                        </p>
+                {step === 2 ? (
+                    <div className="reservation-field">
+                        <label className="reservation-label">Step 2: ご利用人数</label>
+                        <select
+                            name="party_size"
+                            value={formData.party_size}
+                            onChange={(e) => {
+                                const value = Number(e.target.value);
+                                setFormData((p) => ({ ...p, party_size: value }));
+                                setSelectedTime("");
+                            }}
+                            className="reservation-select"
+                        >
+                            {PARTY_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        {formData.party_size >= 5 && formData.party_size <= 8 ? (
+                            <p className="reservation-time-note">座敷席（2卓結合）をご用意いたします。</p>
+                        ) : null}
+
+                        {formData.party_size >= 10 ? (
+                            <div className="reservation-banquet-box">
+                                <p>10名以上は宴会予約をご利用ください。</p>
+                                <button type="button" className="reservation-submit-button" onClick={() => (window.location.href = "/banquet-inquiry")}>宴会のご予約はこちら</button>
+                            </div>
+                        ) : null}
+                        {fieldErrors.party_size && <p className="reservation-field-error">{fieldErrors.party_size}</p>}
+                    </div>
+                ) : null}
+
+                {step === 3 ? (
+                    <div className="reservation-field">
+                        <label className="reservation-label">Step 3: ご希望時間（○/×）</label>
+                        <div className="reservation-time-wrapper">
+                            {availableTimes.length === 0 ? (
+                                <p className="reservation-time-note">この日は休業日または営業時間外です。</p>
+                            ) : availabilityLoading ? (
+                                <p className="reservation-time-note">空き状況を確認中...</p>
+                            ) : (
+                                <div className="reservation-time-grid">
+                                    {availableTimes.map((time) => {
+                                        const isAvailable = availableStartSet.has(time);
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={time}
+                                                onClick={() => isAvailable && setSelectedTime(time)}
+                                                disabled={!isAvailable}
+                                                className={`reservation-time-button ${selectedTime === time ? "reservation-time-button--selected" : ""} ${!isAvailable ? "reservation-time-button--disabled" : ""}`}
+                                            >
+                                                <span className="reservation-time-label">{time}</span>
+                                                <span className="reservation-time-status">{isAvailable ? "○" : "×"}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        {selectedTime ? <p className="reservation-selected-time">選択時間: {selectedTime}</p> : null}
+                    </div>
+                ) : null}
+
+                {step === 4 ? (
+                    <div className="reservation-field">
+                        <label className="reservation-label">Step 4: 席タイプ希望（任意）</label>
+                        <select
+                            className="reservation-select"
+                            value={formData.seat_preference}
+                            onChange={(e) => setFormData((p) => ({ ...p, seat_preference: e.target.value }))}
+                        >
+                            <option value="">指定なし</option>
+                            <option value="regular">テーブル席</option>
+                            <option value="private">個室</option>
+                            <option value="tatami">座敷</option>
+                        </select>
+                    </div>
+                ) : null}
+
+                {step === 5 ? (
+                    <>
+                        <div className="reservation-field">
+                            <label className="reservation-label">Step 5: お名前</label>
+                            <input className={`reservation-input ${fieldErrors.name ? "reservation-input--error" : ""}`} value={formData.name} onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))} />
+                            {fieldErrors.name && <p className="reservation-field-error">{fieldErrors.name}</p>}
+                        </div>
+                        <div className="reservation-field">
+                            <label className="reservation-label">メールアドレス</label>
+                            <input type="email" className={`reservation-input ${fieldErrors.email ? "reservation-input--error" : ""}`} value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} />
+                            {fieldErrors.email && <p className="reservation-field-error">{fieldErrors.email}</p>}
+                        </div>
+                        <div className="reservation-field">
+                            <label className="reservation-label">電話番号</label>
+                            <input className={`reservation-input ${fieldErrors.phone ? "reservation-input--error" : ""}`} value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} />
+                            {fieldErrors.phone && <p className="reservation-field-error">{fieldErrors.phone}</p>}
+                        </div>
+                    </>
+                ) : null}
+
+                {step === 6 ? (
+                    <div className="reservation-field">
+                        <label className="reservation-label">Step 6: 備考</label>
+                        <textarea className="reservation-textarea" rows={4} value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} />
+                    </div>
+                ) : null}
+
+                {step === 7 ? (
+                    <div className="reservation-field">
+                        <label className="reservation-label">Step 7: 確認</label>
+                        <div className="reservation-confirm">
+                            <p>日付: {formatDateYMD(date)}</p>
+                            <p>人数: {formData.party_size}名</p>
+                            <p>時間: {selectedTime || "未選択"}</p>
+                            <p>席希望: {formData.seat_preference || "指定なし"}</p>
+                            <p>お名前: {formData.name}</p>
+                            <p>メール: {formData.email}</p>
+                            <p>電話: {formData.phone}</p>
+                        </div>
+                    </div>
+                ) : null}
+
+                {message ? <p className={`reservation-message ${fieldErrors && Object.keys(fieldErrors).length ? "reservation-message--error" : "reservation-message--success"}`}>{message}</p> : null}
+
+                <div className="reservation-step-actions">
+                    {step > 1 ? (
+                        <button type="button" className="reservation-back-button" onClick={handleBack}>
+                            戻る
+                        </button>
+                    ) : null}
+                    {step < 7 ? (
+                        <button type="button" className="reservation-submit-button" onClick={handleNext} disabled={step === 2 && formData.party_size >= 10}>
+                            次へ
+                        </button>
                     ) : (
-                        <p className="reservation-time-note">※ 選択中メニュー情報を確認中...</p>
+                        <button type="submit" className="reservation-submit-button">
+                            予約を送信する
+                        </button>
                     )}
                 </div>
-
-                {/* 名前 */}
-                <div className="reservation-field">
-                    <label className="reservation-label">お名前</label>
-                    <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className={`reservation-input ${fieldErrors.name ? "reservation-input--error" : ""}`}
-                    />
-                    {fieldErrors.name && <p className="reservation-field-error">{fieldErrors.name}</p>}
-                </div>
-
-                {/* メール */}
-                <div className="reservation-field">
-                    <label className="reservation-label">メールアドレス</label>
-                    <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className={`reservation-input ${fieldErrors.email ? "reservation-input--error" : ""}`}
-                    />
-                    {fieldErrors.email && <p className="reservation-field-error">{fieldErrors.email}</p>}
-                </div>
-
-                {/* 電話番号 */}
-                <div className="reservation-field">
-                    <label className="reservation-label">電話番号</label>
-                    <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        className={`reservation-input ${fieldErrors.phone ? "reservation-input--error" : ""}`}
-                    />
-                    {fieldErrors.phone && <p className="reservation-field-error">{fieldErrors.phone}</p>}
-                </div>
-
-                {/* カレンダー */}
-                <div className="reservation-field">
-                    <label className="reservation-label">ご希望日</label>
-                    <div className="reservation-calendar-wrapper">
-                        <div className="reservation-calendar">
-                            <Calendar onChange={handleDateChange} value={date} tileDisabled={tileDisabled} />
-                        </div>
-                        <p className="reservation-date-text">選択された日付: {date.toLocaleDateString()}</p>
-                    </div>
-                </div>
-
-                {/* 時間枠選択 */}
-                <div className="reservation-field">
-                    <label className="reservation-label">ご希望時間</label>
-
-                    <div className="reservation-time-wrapper">
-                        {availableTimes.length === 0 ? (
-                            <p className="reservation-time-note">※ この日は休業日または営業時間外です</p>
-                        ) : !formData.service_id ? (
-                            <p className="reservation-time-note">
-                                ※ メニューが選択されていません（メニュー・料金から選択してください）
-                            </p>
-                        ) : availabilityLoading ? (
-                            <p className="reservation-time-note">空き状況を確認中...</p>
-                        ) : (
-                            <div className="reservation-time-grid">
-                                {availableTimes.map((time) => {
-                                    const isAvailable = availableStartSet.has(time);
-                                    // UI上でも12h未満は選べない（API側でも弾いているが見た目補強）
-                                    const ok12h = isAfter12HoursFromNow(date, time);
-                                    const canSelect = isAvailable && ok12h;
-
-                                    const statusMark = canSelect ? "○" : "×";
-
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={time}
-                                            onClick={() => {
-                                                if (canSelect) setSelectedTime(time);
-                                            }}
-                                            disabled={!canSelect}
-                                            className={`reservation-time-button ${selectedTime === time ? "reservation-time-button--selected" : ""
-                                                } ${!canSelect ? "reservation-time-button--disabled" : ""}`}
-                                        >
-                                            <span className="reservation-time-label">{time}</span>
-                                            <span className="reservation-time-status">{statusMark}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        {selectedTime && <p className="reservation-selected-time">選択された時間: {selectedTime}</p>}
-                    </div>
-                </div>
-
-                {/* 備考 */}
-                <div className="reservation-field">
-                    <label className="reservation-label">備考</label>
-                    <textarea
-                        name="notes"
-                        value={formData.notes}
-                        onChange={handleChange}
-                        rows={3}
-                        className={`reservation-textarea ${fieldErrors.notes ? "reservation-input--error" : ""}`}
-                    />
-                    {fieldErrors.notes && <p className="reservation-field-error">{fieldErrors.notes}</p>}
-                </div>
-
-                {/* ✅ メッセージを「予約する」ボタンの上に表示 */}
-                {message && (
-                    <p
-                        className={`reservation-message ${message.includes("✅")
-                                ? "reservation-message--success"
-                                : "reservation-message--error"
-                            }`}
-                    >
-                        {message}
-                    </p>
-                )}
-
-                {/* 送信ボタン */}
-                <button type="submit" className="reservation-submit-button">
-                    予約する
-                </button>
             </form>
+
+            <div className="reservation-phone-notice">
+                <p>当日のご予約はお電話にて承ります</p>
+                <a href="tel:08097049500">080-9704-9500</a>
+            </div>
         </main>
     );
 }

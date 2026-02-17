@@ -17,8 +17,7 @@ class AdminBlockController extends Controller
     {
         $v = $request->validate([
             'date'             => ['required', 'date'],
-            // ✅ 予約は lane=1 想定なので、ブロックは 2 or 3 に制限（Timetable.jsx の想定に合わせる）
-            'lane'             => ['required', 'integer', 'in:2,3'],
+            'lane'             => ['required', 'integer', 'min:1', 'max:7'],
             'start_time'       => ['required', 'date_format:H:i'],
             'duration_minutes' => ['required', 'integer', 'min:15', 'max:600'],
 
@@ -26,6 +25,7 @@ class AdminBlockController extends Controller
             'name'             => ['nullable', 'string', 'max:255'],
             'email'            => ['nullable', 'email', 'max:255'],
             'phone'            => ['nullable', 'string', 'max:20'],
+            'party_size'       => ['nullable', 'integer', 'min:1', 'max:8'],
             'service_id'       => ['nullable', 'exists:services,id'],
             'notes'            => ['nullable', 'string', 'max:1000'],
         ]);
@@ -47,6 +47,7 @@ class AdminBlockController extends Controller
             'name'       => $v['name'] ?? null,
             'email'      => $v['email'] ?? null,
             'phone'      => $v['phone'] ?? null,
+            'party_size' => $v['party_size'] ?? null,
             'service_id' => $v['service_id'] ?? null,
             'notes'      => $v['notes'] ?? null,
         ]);
@@ -67,13 +68,14 @@ class AdminBlockController extends Controller
         $v = $request->validate([
             // フロント（Timetable.jsx）の payload に date が含まれる想定で受ける
             'date'             => ['required', 'date'],
-            'lane'             => ['required', 'integer', 'in:2,3'],
+            'lane'             => ['required', 'integer', 'min:1', 'max:7'],
             'start_time'       => ['required', 'date_format:H:i'],
             'duration_minutes' => ['required', 'integer', 'min:15', 'max:600'],
 
             'name'             => ['nullable', 'string', 'max:255'],
             'email'            => ['nullable', 'email', 'max:255'],
             'phone'            => ['nullable', 'string', 'max:20'],
+            'party_size'       => ['nullable', 'integer', 'min:1', 'max:8'],
             'service_id'       => ['nullable', 'exists:services,id'],
             'notes'            => ['nullable', 'string', 'max:1000'],
         ]);
@@ -94,6 +96,7 @@ class AdminBlockController extends Controller
             'name'       => $v['name'] ?? null,
             'email'      => $v['email'] ?? null,
             'phone'      => $v['phone'] ?? null,
+            'party_size' => $v['party_size'] ?? null,
             'service_id' => $v['service_id'] ?? null,
             'notes'      => $v['notes'] ?? null,
         ]);
@@ -131,6 +134,7 @@ class AdminBlockController extends Controller
             'email'      => $block->email,
             'phone'      => $block->phone,
             'notes'      => $block->notes,
+            'party_size' => $block->party_size,
 
             'service_id'   => $block->service_id,
             'service_name' => $block->service?->name,

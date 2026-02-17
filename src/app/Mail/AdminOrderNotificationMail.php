@@ -20,7 +20,7 @@ class AdminOrderNotificationMail extends Mailable
 
     public function build()
     {
-        return $this->subject('【Lash Brow Ohana】新しい注文がありました')
+        return $this->subject('【すし割烹 いづ浦】新しい注文がありました')
             ->view('emails.admin_order_notification');
     }
 }

@@ -17,6 +17,9 @@ class Reservation extends Model
         'customer_id',
         'user_id',          // 顧客 (User)
         'service_id',       // メニュー (Service)
+        'table_id',
+        'party_size',
+        'seat_preference',
         'name',
         'email',
         'phone',            // ← 追加（必須）
@@ -43,6 +46,11 @@ class Reservation extends Model
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function table()
+    {
+        return $this->belongsTo(Table::class);
     }
 
     /**

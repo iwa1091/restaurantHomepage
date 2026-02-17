@@ -302,6 +302,32 @@
     opacity: 0.6;
 }
 
+.reservation-banquet-box {
+    margin-top: 0.6rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-accent-soft);
+    border-radius: 8px;
+    background-color: var(--color-bg-soft);
+}
+
+.reservation-confirm {
+    border: 1px solid var(--color-accent-soft);
+    border-radius: 8px;
+    padding: 0.8rem;
+    background-color: var(--color-bg-soft);
+}
+
+.reservation-confirm p {
+    margin: 0.2rem 0;
+    font-size: 0.92rem;
+}
+
+.reservation-step-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
 /* 送信ボタン：金色 */
 .reservation-submit-button {
     width: 100%;
@@ -341,6 +367,27 @@
     border-color: var(--color-error-border);
     background-color: var(--color-error-bg);
     box-shadow: 0 0 0 1px rgba(197, 61, 61, 0.15);
+}
+
+.reservation-phone-notice {
+    margin-top: 1rem;
+    text-align: center;
+    border: 1px solid var(--color-accent);
+    border-radius: 10px;
+    padding: 0.75rem;
+    background: #fff;
+}
+
+.reservation-phone-notice p {
+    margin: 0 0 0.3rem;
+    font-weight: 700;
+}
+
+.reservation-phone-notice a {
+    color: var(--color-primary);
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-decoration: none;
 }
 
 /* ============================================

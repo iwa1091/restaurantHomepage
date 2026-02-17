@@ -23,7 +23,7 @@ class UserReservationCanceledMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '【Lash Brow Ohana】ご予約キャンセル完了のお知らせ'
+            subject: '【すし割烹 いづ浦】ご予約キャンセル完了のお知らせ'
         );
     }
 

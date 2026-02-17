@@ -38,8 +38,8 @@ class ReservationThanksMail extends Mailable
     public function build(): self
     {
         $subject = $this->pattern === 'after_3days'
-            ? '【Lash Brow Ohana】ご来店ありがとうございました'
-            : '【Lash Brow Ohana】次回ご来店のご案内';
+            ? '【すし割烹 いづ浦】ご来店ありがとうございました'
+            : '【すし割烹 いづ浦】次回ご来店のご案内';
 
         return $this
             ->subject($subject)

@@ -20,7 +20,7 @@ class UserOrderConfirmationMail extends Mailable
 
     public function build()
     {
-        return $this->subject('【Lash Brow Ohana】ご購入ありがとうございます')
+        return $this->subject('【すし割烹 いづ浦】ご購入ありがとうございます')
             ->view('emails.user_order_confirmation');
     }
 }

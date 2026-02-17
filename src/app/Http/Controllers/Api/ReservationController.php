@@ -3,180 +3,118 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Reservation;
-use App\Models\Service;
-use App\Models\BusinessHour;             // ✅ 追加：営業時間（BusinessHour）を正にする
-use App\Models\Customer;                // 顧客モデル
-use App\Models\ScheduledEmail;          // 予約メールスケジュールモデル
-use App\Models\AdminBlock;              // ✅ 追加：管理者ブロック（枠2/枠3）
 use App\Http\Requests\StoreReservationRequest;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\ReservationConfirmedMail;
 use App\Mail\AdminReservationNoticeMail;
+use App\Mail\ReservationConfirmedMail;
+use App\Models\AdminBlock;
+use App\Models\BusinessHour;
+use App\Models\Customer;
+use App\Models\Reservation;
+use App\Models\ScheduledEmail;
+use App\Models\Table;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
-/**
- * 一般ユーザー向けの予約および空き時間チェックAPIを管理するコントローラー
- *
- * ✅ 営業時間の判定は BusinessHour を正として扱う
- */
 class ReservationController extends Controller
 {
-    /**
-     * 🔍 予約可能時間の確認（BusinessHour 基準）
-     *
-     * - 15分刻みで開始時刻候補を生成
-     * - サービス所要時間（duration）ぶんの枠が営業時間内に収まるものだけ
-     * - 既存予約（confirmed）と重複するものは除外
-     * - 現在時刻から12時間以内の枠は除外（ワンオペ運用）
-     *
-     * ✅ 追加：
-     * - 管理者ブロック（lane=2）の時間帯も除外（lane=3 は現状のまま＝判定に含めない）
-     *
-     * ✅ 変更（要望対応）：
-     * - 「重なり判定」を **開始時刻が busy に入っているか** のみに変更
-     *   （busy の end も含める：12:00-13:00 の場合 13:00 も×）
-     */
     public function checkAvailability(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'date'       => 'required|date_format:Y-m-d|after_or_equal:today',
-            'service_id' => 'required|exists:services,id',
+            'date' => ['required', 'date_format:Y-m-d'],
+            'party_size' => ['required', 'integer', 'min:1', 'max:8'],
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $date     = Carbon::parse($request->date);
-        $service  = Service::find($request->service_id);
-        $duration = (int) ($service->duration_minutes ?? 30);
+        $date = Carbon::parse($request->date);
+        $partySize = (int) $request->party_size;
 
-        // ✅ BusinessHour を取得（なければ休業扱い）
-        [$openTime, $closeTime, $bhMessage] = $this->resolveOpenCloseByBusinessHour($date);
-
-        if (!$openTime || !$closeTime) {
+        $tomorrow = now()->addDay()->startOfDay();
+        if ($date->lt($tomorrow)) {
             return response()->json([
                 'available_slots' => [],
-                'message'         => $bhMessage ?: '本日は終日休業です。',
+                'message' => '当日のご予約はお電話にて承ります。',
             ], 200);
         }
 
-        // ✅ 予約済み時間帯を取得（当日 confirmed のみ）
-        $bookedSlots = Reservation::where('date', $date->format('Y-m-d'))
-            ->where('status', 'confirmed')
-            ->get(['start_time', 'end_time'])
-            ->map(function ($r) use ($date) {
-                // ✅ start_time / end_time が「time」でも「datetime」でも壊れないように、
-                //    "当日の date + 時刻" の Carbon に正規化する
-                return [
-                    'start' => $this->normalizeTimeOnDate($date, $r->start_time),
-                    'end'   => $this->normalizeTimeOnDate($date, $r->end_time),
-                ];
-            })
-            ->toArray();
+        [$openTime, $closeTime, $bhMessage] = $this->resolveOpenCloseByBusinessHour($date);
+        if (!$openTime || !$closeTime) {
+            return response()->json([
+                'available_slots' => [],
+                'message' => $bhMessage ?: '本日は終日休業です。',
+            ], 200);
+        }
 
-        // ✅ 追加：管理者ブロック（lane=2）も「埋まり」として扱う（lane=3 は現状維持のため除外）
-        $blockedSlots = AdminBlock::where('date', $date->format('Y-m-d'))
-            ->where('lane', 2)
-            ->get(['start_time', 'end_time'])
-            ->map(function ($b) use ($date) {
-                return [
-                    'start' => $this->normalizeTimeOnDate($date, $b->start_time),
-                    'end'   => $this->normalizeTimeOnDate($date, $b->end_time),
-                ];
-            })
-            ->toArray();
-
-        // 予約済み + ブロック済み をまとめる
-        $busySlots = array_merge($bookedSlots, $blockedSlots);
-
+        $tatamiPair = $this->getTatamiPair();
         $availableSlots = [];
-
-        // ✅ 12時間ルール（開始時刻がこれ未満は候補から外す）
-        $minStart = now()->addHours(12);
-
-        // ✅ 開始時刻候補（15分刻み）を生成
-        $currentTime = $this->alignToQuarterHour($openTime->copy());
+        $currentTime = $this->alignToHalfHour($openTime->copy());
 
         while ($currentTime->lt($closeTime)) {
-            $slotEnd = (clone $currentTime)->addMinutes($duration);
-
-            // 所要時間ぶんが営業時間を超えるなら終了
+            $slotEnd = $currentTime->copy()->addHours(2);
             if ($slotEnd->gt($closeTime)) {
                 break;
             }
 
-            // 12時間以内は不可
-            if ($currentTime->lt($minStart)) {
-                $currentTime->addMinutes(15);
+            if ($this->isBlockedByAdminBlock($date, $currentTime)) {
+                $currentTime->addMinutes(30);
                 continue;
             }
 
-            // ✅ 変更：開始時刻が busy（予約/ブロック）の時間帯に入っていれば×（endも含める）
-            $isBooked = collect($busySlots)->contains(function ($busy) use ($currentTime) {
-                return $currentTime->gte($busy['start']) && $currentTime->lte($busy['end']);
-            });
+            if ($partySize <= 4) {
+                $table = $this->findAvailableTableForSmallGroup($date, $currentTime, $partySize, null);
+                if ($table) {
+                    $availableSlots[] = [
+                        'start' => $currentTime->format('H:i'),
+                        'end' => $slotEnd->format('H:i'),
+                    ];
+                }
+            } else {
+                $canUseTatamiPair = $tatamiPair->count() >= 2
+                    && $this->isTatamiPairAvailable($date, $currentTime, $tatamiPair->pluck('id')->all());
 
-            if (!$isBooked) {
-                $availableSlots[] = [
-                    'start' => $currentTime->format('H:i'),
-                    'end'   => $slotEnd->format('H:i'),
-                ];
+                if ($canUseTatamiPair) {
+                    $availableSlots[] = [
+                        'start' => $currentTime->format('H:i'),
+                        'end' => $slotEnd->format('H:i'),
+                    ];
+                }
             }
 
-            // ✅ 15分刻みで次の開始候補へ
-            $currentTime->addMinutes(15);
+            $currentTime->addMinutes(30);
         }
 
         return response()->json(['available_slots' => $availableSlots], 200);
     }
 
-    /**
-     * 📨 予約作成 + メール送信（MailHog対応）
-     *
-     * ✅ 追加：
-     * - BusinessHour（営業時間）内かチェック
-     * - 12時間以内の予約を禁止
-     * - 15分刻み以外の開始時刻を禁止（UIと整合）
-     *
-     * ✅ 追加：
-     * - 管理者ブロック（lane=2）と重複する予約を禁止（lane=3 は現状のまま＝判定に含めない）
-     *
-     * ✅ 変更（要望対応）：
-     * - 「重なり判定」を **開始時刻が busy に入っているか** のみに変更
-     *   （busy の end も含める：12:00-13:00 の場合 13:00 開始も×）
-     */
     public function store(StoreReservationRequest $request)
     {
-        $service  = Service::find($request->service_id);
-        $duration = (int) ($service->duration_minutes ?? 30);
+        $date = Carbon::parse($request->date);
+        $partySize = (int) $request->party_size;
+        $seatPreference = $request->seat_preference;
+
+        $tomorrow = now()->addDay()->startOfDay();
+        if ($date->lt($tomorrow)) {
+            return response()->json([
+                'message' => '当日のご予約はお電話にて承ります。',
+            ], 422);
+        }
 
         $proposedStart = Carbon::parse($request->date . ' ' . $request->start_time);
-        $proposedEnd   = (clone $proposedStart)->addMinutes($duration);
+        $proposedEnd = $proposedStart->copy()->addHours(2);
 
-        // ✅ 15分刻みチェック（分が 0/15/30/45 以外は弾く）
-        if (((int) $proposedStart->format('i')) % 15 !== 0) {
+        if (((int) $proposedStart->format('i')) % 30 !== 0) {
             return response()->json([
-                'message' => '開始時刻は15分刻みで選択してください。',
+                'message' => '開始時刻は30分刻みで選択してください。',
             ], 422);
         }
 
-        // ✅ 12時間ルール
-        $minStart = now()->addHours(12);
-        if ($proposedStart->lt($minStart)) {
-            return response()->json([
-                'message' => 'ご予約は現在時刻から12時間以降の枠のみ受付可能です。',
-            ], 422);
-        }
-
-        // ✅ BusinessHour（営業時間）チェック
-        [$openTime, $closeTime, $bhMessage] = $this->resolveOpenCloseByBusinessHour(Carbon::parse($request->date));
-
+        [$openTime, $closeTime, $bhMessage] = $this->resolveOpenCloseByBusinessHour($date);
         if (!$openTime || !$closeTime) {
             return response()->json([
                 'message' => $bhMessage ?: '本日は終日休業のため予約できません。',
@@ -189,72 +127,66 @@ class ReservationController extends Controller
             ], 422);
         }
 
-        // ✅ 変更：開始時刻が既存予約の時間帯に入っていればNG（endも含める）
-        $startT = $proposedStart->format('H:i:s');
-
-        $isOverlapping = Reservation::where('date', $request->date)
-            ->where('status', 'confirmed')
-            ->where('start_time', '<=', $startT)
-            ->where('end_time',   '>=', $startT)
-            ->exists();
-
-        if ($isOverlapping) {
-            return response()->json([
-                'message' => '選択された時間枠は既に予約済みです。',
-            ], 409);
-        }
-
-        // ✅ 変更：管理者ブロック（lane=2）も、開始時刻がブロック時間帯に入っていればNG（endも含める）
-        $isBlockedByLane2 = AdminBlock::where('date', $request->date)
-            ->where('lane', 2)
-            ->where('start_time', '<=', $startT)
-            ->where('end_time',   '>=', $startT)
-            ->exists();
-
-        if ($isBlockedByLane2) {
+        if ($this->isBlockedByAdminBlock($date, $proposedStart)) {
             return response()->json([
                 'message' => '選択された時間枠はブロック設定により予約できません。',
             ], 409);
         }
 
-        // 🔹 ログインユーザー（いれば）
-        $user = $request->user();
+        $assignedTable = null;
+        $notes = (string) ($request->notes ?? '');
 
-        // 🔹 顧客情報のベース（User 優先・いなければリクエストから）
-        $baseName  = $user ? $user->name  : $request->name;
+        if ($partySize >= 5) {
+            $tatamiPair = $this->getTatamiPair();
+            if ($tatamiPair->count() < 2 || !$this->isTatamiPairAvailable($date, $proposedStart, $tatamiPair->pluck('id')->all())) {
+                return response()->json([
+                    'message' => '5〜8名様向けの座敷結合席に空きがありません。別時間をご検討ください。',
+                ], 409);
+            }
+
+            $assignedTable = $tatamiPair->first();
+            $notes = trim($notes === '' ? '座敷結合（A+B）' : $notes . "\n座敷結合（A+B）");
+        } else {
+            $assignedTable = $this->findAvailableTableForSmallGroup($date, $proposedStart, $partySize, $seatPreference);
+            if (!$assignedTable) {
+                return response()->json([
+                    'message' => '選択された時間帯は満席です。別時間をご検討ください。',
+                ], 409);
+            }
+        }
+
+        $user = $request->user();
+        $baseName = $user ? $user->name : $request->name;
         $baseEmail = $user ? $user->email : $request->email;
         $basePhone = $user ? $user->phone : $request->phone;
 
-        // 🔹 Customer をメールアドレスで作成 / 更新
         $customer = null;
         if ($baseEmail) {
             $customer = Customer::updateOrCreate(
                 ['email' => $baseEmail],
-                [
-                    'name'  => $baseName,
-                    'phone' => $basePhone,
-                ]
+                ['name' => $baseName, 'phone' => $basePhone]
             );
         }
 
-        // 💾 データベース登録
         try {
             $reservation = Reservation::create([
-                'user_id'          => $user?->id,
-                'customer_id'      => $customer?->id,
-                'service_id'       => $request->service_id,
-                'name'             => $baseName,
-                'email'            => $baseEmail,
-                'phone'            => $basePhone,
-                'date'             => $request->date,
-                'start_time'       => $proposedStart->format('H:i:s'),
-                'end_time'         => $proposedEnd->format('H:i:s'),
-                'status'           => 'confirmed',
-                'notes'            => $request->notes,
+                'user_id' => $user?->id,
+                'customer_id' => $customer?->id,
+                'service_id' => $request->service_id,
+                'table_id' => $assignedTable?->id,
+                'party_size' => $partySize,
+                'seat_preference' => $seatPreference,
+                'name' => $baseName,
+                'email' => $baseEmail,
+                'phone' => $basePhone,
+                'date' => $request->date,
+                'start_time' => $proposedStart->format('H:i:s'),
+                'end_time' => $proposedEnd->format('H:i:s'),
+                'status' => 'confirmed',
+                'notes' => $notes !== '' ? $notes : null,
                 'reservation_code' => strtoupper(uniqid('RSV')),
             ]);
         } catch (QueryException $e) {
-            // ★ DB ユニーク制約に引っかかった場合
             if (isset($e->errorInfo[1]) && $e->errorInfo[1] === 1062) {
                 return response()->json([
                     'message' => '選択された時間枠は既に他の予約で埋まっています。（DB制約）',
@@ -262,9 +194,9 @@ class ReservationController extends Controller
             }
 
             Log::error('[予約登録エラー] ' . $e->getMessage(), [
-                'date'       => $request->date,
+                'date' => $request->date,
                 'start_time' => $request->start_time,
-                'service_id' => $request->service_id,
+                'party_size' => $partySize,
             ]);
 
             return response()->json([
@@ -272,14 +204,12 @@ class ReservationController extends Controller
             ], 500);
         }
 
-        $reservation->load('service');
+        $reservation->load(['service', 'table']);
 
-        // 🔹 顧客統計のリフレッシュ
         if ($customer) {
             $customer->recalculateStats();
         }
 
-        // 🔔 リマインド & サンクスメールのスケジュール登録
         try {
             $this->scheduleReservationEmails($reservation, $proposedStart);
         } catch (\Throwable $e) {
@@ -288,50 +218,43 @@ class ReservationController extends Controller
             ]);
         }
 
-        // ✉️ 即時メール送信
         try {
             Mail::to($reservation->email)->send(new ReservationConfirmedMail($reservation));
 
-            $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@lash-brow-ohana.local');
+            $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@izuura.local');
             Mail::to($adminEmail)->send(new AdminReservationNoticeMail($reservation));
-
-            // ✅ Mail::failures() は現在の Laravel / Mailer では存在しないため削除
         } catch (\Exception $e) {
             Log::error('[メール送信エラー] ' . $e->getMessage(), [
                 'reservation_id' => $reservation->id ?? null,
-                'email'          => $reservation->email ?? null,
+                'email' => $reservation->email ?? null,
             ]);
         }
 
         return response()->json([
-            'message'     => '予約が完了しました（確認メールを送信しました）。',
+            'message' => '予約が完了しました（確認メールを送信しました）。',
             'reservation' => $reservation,
         ], 201);
     }
 
-    /**
-     * 📋 管理者向け一覧API
-     */
     public function index()
     {
-        $reservations = Reservation::with('service')
+        $reservations = Reservation::with(['service', 'table'])
             ->orderBy('date', 'desc')
             ->get()
             ->map(fn ($r) => [
-                'id'           => $r->id,
-                'name'         => $r->name,
+                'id' => $r->id,
+                'name' => $r->name,
                 'service_name' => $r->service->name ?? '未設定',
-                'date'         => $r->date,
-                'start_time'   => $r->start_time,
-                'status'       => $r->status ?? '予約中',
+                'table_name' => $r->table->name ?? '未割当',
+                'party_size' => $r->party_size,
+                'date' => $r->date,
+                'start_time' => $r->start_time,
+                'status' => $r->status ?? '予約中',
             ]);
 
         return response()->json($reservations);
     }
 
-    /**
-     * ❌ 管理者用：予約削除API
-     */
     public function destroy($id)
     {
         $reservation = Reservation::find($id);
@@ -345,27 +268,17 @@ class ReservationController extends Controller
         return response()->json(['message' => '削除しました。'], 200);
     }
 
-    /* =====================================================
-     * 🔔 予約メールスケジュール登録関連（private/protected）
-     * ===================================================== */
-
-    /**
-     * ✅ BusinessHour から当日の open/close を解決する
-     *
-     * @return array{0: ?Carbon, 1: ?Carbon, 2: ?string}
-     */
     protected function resolveOpenCloseByBusinessHour(Carbon $date): array
     {
-        $year  = (int) $date->year;
+        $year = (int) $date->year;
         $month = (int) $date->month;
 
-        // ✅ 月データが無い場合はデフォルトを自動生成（運用に合わせて不要なら削除してOK）
         if (BusinessHour::where('year', $year)->where('month', $month)->count() === 0) {
             BusinessHour::seedDefaultForMonth($year, $month);
         }
 
         $week = BusinessHour::getWeekOfMonth($date);
-        $dayJa = ['日','月','火','水','木','金','土'][$date->dayOfWeek];
+        $dayJa = ['日', '月', '火', '水', '木', '金', '土'][$date->dayOfWeek];
 
         $bh = BusinessHour::where('year', $year)
             ->where('month', $month)
@@ -381,14 +294,14 @@ class ReservationController extends Controller
             return [null, null, '本日は休業日です。'];
         }
 
-        $openStr  = BusinessHour::normalizeTimeToHi($bh->open_time);
+        $openStr = BusinessHour::normalizeTimeToHi($bh->open_time);
         $closeStr = BusinessHour::normalizeTimeToHi($bh->close_time);
 
         if (!$openStr || !$closeStr) {
             return [null, null, '営業時間が未設定です。'];
         }
 
-        $open  = Carbon::parse($date->format('Y-m-d') . ' ' . $openStr);
+        $open = Carbon::parse($date->format('Y-m-d') . ' ' . $openStr);
         $close = Carbon::parse($date->format('Y-m-d') . ' ' . $closeStr);
 
         if ($close->lte($open)) {
@@ -398,79 +311,89 @@ class ReservationController extends Controller
         return [$open, $close, null];
     }
 
-    /**
-     * ✅ Carbon を次の15分境界に揃える（09:07 -> 09:15）
-     */
-    protected function alignToQuarterHour(Carbon $dt): Carbon
+    protected function alignToHalfHour(Carbon $dt): Carbon
     {
         $minute = (int) $dt->format('i');
-        $mod = $minute % 15;
+        $mod = $minute % 30;
 
         if ($mod !== 0) {
-            $dt->addMinutes(15 - $mod);
+            $dt->addMinutes(30 - $mod);
         }
 
         return $dt->setSecond(0);
     }
 
-    /**
-     * ✅ "指定日(date) + 時刻(start_time/end_time)" を安全に Carbon 化する
-     *
-     * - start_time/end_time が "09:00:00" のような time でも
-     * - "2026-02-02 09:00:00" のような datetime でも
-     *   → 当日の date に揃えて "YYYY-mm-dd HH:ii:ss" として解釈する
-     *
-     * これにより "2026-02-04 2026-02-02 09:00:00" のような二重日付を防ぐ。
-     */
-    protected function normalizeTimeOnDate(Carbon $date, $timeValue): Carbon
+    protected function isBlockedByAdminBlock(Carbon $date, Carbon $start): bool
     {
-        // DateTime/Carbon が来た場合も "時刻だけ" を抽出して当日付けに揃える
-        if ($timeValue instanceof \DateTimeInterface) {
-            $time = Carbon::instance($timeValue)->format('H:i:s');
-            return Carbon::parse($date->format('Y-m-d') . ' ' . $time);
-        }
+        $startT = $start->format('H:i:s');
 
-        $str = trim((string) $timeValue);
-
-        if ($str === '') {
-            // 想定外の空値（念のため）
-            return Carbon::parse($date->format('Y-m-d') . ' 00:00:00');
-        }
-
-        // "HH:MM" or "HH:MM:SS"
-        if (preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $str)) {
-            if (strlen($str) === 5) {
-                $str .= ':00';
-            }
-            return Carbon::parse($date->format('Y-m-d') . ' ' . $str);
-        }
-
-        // それ以外（datetime文字列など）は parse して時刻部分だけ使う
-        try {
-            $parsed = Carbon::parse($str);
-            $time   = $parsed->format('H:i:s');
-            return Carbon::parse($date->format('Y-m-d') . ' ' . $time);
-        } catch (\Throwable $e) {
-            Log::warning('[normalizeTimeOnDate] start/end_time のパースに失敗しました。', [
-                'date'      => $date->format('Y-m-d'),
-                'timeValue' => $timeValue,
-                'error'     => $e->getMessage(),
-            ]);
-
-            return Carbon::parse($date->format('Y-m-d') . ' 00:00:00');
-        }
+        return AdminBlock::where('date', $date->format('Y-m-d'))
+            ->where('start_time', '<=', $startT)
+            ->where('end_time', '>=', $startT)
+            ->exists();
     }
 
-    /**
-     * 予約日時を基準に、リマインド／サンクスメールを scheduled_emails に登録する
-     *
-     * - リマインド：2日前 + 前日
-     * - サンクス：3日後
-     * - 再来店促進：1か月後
-     */
+    protected function getOccupiedTableIds(Carbon $date, Carbon $start): array
+    {
+        $startT = $start->format('H:i:s');
+
+        return Reservation::query()
+            ->where('date', $date->format('Y-m-d'))
+            ->where('status', 'confirmed')
+            ->whereNotNull('table_id')
+            ->where('start_time', '<=', $startT)
+            ->where('end_time', '>=', $startT)
+            ->pluck('table_id')
+            ->all();
+    }
+
+    protected function findAvailableTableForSmallGroup(
+        Carbon $date,
+        Carbon $start,
+        int $partySize,
+        ?string $seatPreference
+    ): ?Table {
+        $occupied = $this->getOccupiedTableIds($date, $start);
+
+        $query = Table::query()
+            ->active()
+            ->where('capacity', '>=', $partySize)
+            ->whereNotIn('id', $occupied)
+            ->orderBy('sort_order');
+
+        if ($seatPreference) {
+            $preferred = (clone $query)->where('type', $seatPreference)->first();
+            if ($preferred) {
+                return $preferred;
+            }
+        }
+
+        return $query->first();
+    }
+
+    protected function getTatamiPair()
+    {
+        return Table::query()
+            ->active()
+            ->where('combine_group', 1)
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    protected function isTatamiPairAvailable(Carbon $date, Carbon $start, array $tatamiIds): bool
+    {
+        if (count($tatamiIds) < 2) {
+            return false;
+        }
+
+        $occupied = $this->getOccupiedTableIds($date, $start);
+
+        return collect($tatamiIds)->every(fn ($id) => !in_array($id, $occupied, true));
+    }
+
     protected function scheduleReservationEmails(Reservation $reservation, Carbon $startDateTime): void
     {
-        $email  = $reservation->email;
+        $email = $reservation->email;
         $userId = $reservation->user_id;
 
         $this->createScheduleEntry(
@@ -506,11 +429,6 @@ class ReservationController extends Controller
         );
     }
 
-    /**
-     * scheduled_emails テーブルへ1件登録する
-     *
-     * ※ send_at がすでに現在時刻を過ぎている場合はスキップ（デバッグ時の暴走防止）
-     */
     protected function createScheduleEntry(
         Reservation $reservation,
         ?int $userId,
@@ -522,14 +440,18 @@ class ReservationController extends Controller
             return;
         }
 
-        ScheduledEmail::create([
-            'user_id'      => $userId,
-            'email'        => $email,
-            'type'         => $type,
-            'related_type' => Reservation::class,
-            'related_id'   => $reservation->id,
-            'send_at'      => $sendAt,
-            'status'       => 'pending',
-        ]);
+        ScheduledEmail::updateOrCreate(
+            [
+                'type' => $type,
+                'related_type' => Reservation::class,
+                'related_id' => $reservation->id,
+            ],
+            [
+                'user_id' => $userId,
+                'email' => $email,
+                'send_at' => $sendAt,
+                'status' => 'pending',
+            ]
+        );
     }
 }

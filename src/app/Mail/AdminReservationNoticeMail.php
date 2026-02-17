@@ -19,7 +19,7 @@ class AdminReservationNoticeMail extends Mailable
 
     public function build()
     {
-        return $this->subject('【Lash Brow Ohana】新しい予約が入りました')
+        return $this->subject('【すし割烹 いづ浦】新しい予約が入りました')
                     ->view('emails.admin-reservation-notice');
     }
 }

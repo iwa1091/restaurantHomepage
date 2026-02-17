@@ -37,7 +37,7 @@ class ReservationReminderMail extends Mailable
      */
     public function build(): self
     {
-        $subject = "【Lash Brow Ohana】ご予約日の{$this->daysBefore}日前のご案内";
+        $subject = "【すし割烹 いづ浦】ご予約日の{$this->daysBefore}日前のご案内";
 
         return $this
             ->subject($subject)

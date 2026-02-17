@@ -13,6 +13,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\BanquetInquiryController;
 
 // Stripe
 use App\Http\Controllers\StripeController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\Admin\BusinessHourController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\TimetableController;
 use App\Http\Controllers\Admin\AdminBlockController;
+use App\Http\Controllers\Admin\AdminBanquetController;
 
 // マイページ
 use App\Http\Controllers\MypageReservationLinkController;
@@ -101,7 +103,7 @@ Route::middleware(['signed'])->group(function () {
     Route::get('/reservations/{reservation}/cancel', function (Request $request, Reservation $reservation) {
         $reservation->load('service');
 
-        $title = 'キャンセル確認 | Lash Brow Ohana';
+        $title = 'キャンセル確認 | すし割烹 いづ浦';
         $isCanceled = ($reservation->status === 'canceled');
 
         // ✅ signed middleware が POST にも効くため、POST先も「署名付きURL」で生成する
@@ -138,7 +140,7 @@ Route::middleware(['signed'])->group(function () {
 
             try {
                 // 管理者へキャンセル通知
-                $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@lash-brow-ohana.local');
+                $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@izuura.local');
                 Mail::to($adminEmail)->send(new AdminReservationCanceledMail($reservation));
 
                 // ユーザーへキャンセル通知
@@ -158,7 +160,7 @@ Route::middleware(['signed'])->group(function () {
         $message = $alreadyCanceled ? 'この予約は既にキャンセル済みです。' : '予約をキャンセルしました。';
 
         return view('reservations.cancel.done', [      // ✅ 変更：view名
-            'title'           => 'キャンセル結果 | Lash Brow Ohana',
+            'title'           => 'キャンセル結果 | すし割烹 いづ浦',
             'reservation'     => $reservation,
             'alreadyCanceled' => $alreadyCanceled,
             'message'         => $message,
@@ -226,6 +228,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Timetable ページ（Inertia）
         Route::get('/timetable', [TimetableController::class, 'index'])
             ->name('timetable.index');
+
+        Route::get('/banquet-inquiries', [AdminBanquetController::class, 'index'])->name('banquet.index');
+        Route::get('/banquet-inquiries/{id}', [AdminBanquetController::class, 'show'])->name('banquet.show');
+        Route::put('/banquet-inquiries/{id}', [AdminBanquetController::class, 'update'])->name('banquet.update');
+        Route::post('/banquet-inquiries/{id}/send-deposit', [AdminBanquetController::class, 'sendDeposit'])->name('banquet.send-deposit');
+        Route::post('/banquet-inquiries/{id}/cancel', [AdminBanquetController::class, 'cancel'])->name('banquet.cancel');
+        Route::post('/banquet-inquiries/{id}/refund', [AdminBanquetController::class, 'refund'])->name('banquet.refund');
     });
 });
 
@@ -335,3 +344,13 @@ Route::post('/contact', [ContactController::class, 'sendEmail'])->name('contact.
 */
 Route::get('/reservation', [ReservationController::class, 'form'])->name('reservation.form');
 Route::post('/reservation/store', [ReservationController::class, 'store'])->name('reservation.store');
+
+/*
+|--------------------------------------------------------------------------
+| 宴会問い合わせ
+|--------------------------------------------------------------------------
+*/
+Route::get('/banquet-inquiry', [BanquetInquiryController::class, 'form'])->name('banquet.form');
+Route::post('/banquet-inquiry', [BanquetInquiryController::class, 'store'])->name('banquet.store');
+Route::get('/banquet-deposit/success', [BanquetInquiryController::class, 'depositSuccess'])->name('banquet.deposit.success');
+Route::get('/banquet-deposit/cancel', [BanquetInquiryController::class, 'depositCancel'])->name('banquet.deposit.cancel');

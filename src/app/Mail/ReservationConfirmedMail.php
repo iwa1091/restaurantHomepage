@@ -20,7 +20,7 @@ class ReservationConfirmedMail extends Mailable
 
     public function build()
     {
-        return $this->subject('【Lash Brow Ohana】ご予約ありがとうございます')
+        return $this->subject('【すし割烹 いづ浦】ご予約ありがとうございます')
             ->view('emails.reservation-confirmed')
             ->with(['reservation' => $this->reservation]);
     }

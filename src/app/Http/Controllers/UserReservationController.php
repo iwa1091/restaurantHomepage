@@ -59,7 +59,7 @@ class UserReservationController extends Controller
         $reservation->load('service');
 
         return view('reservations.cancel.confirm', [
-            'title'       => 'キャンセル確認 | Lash Brow Ohana',
+            'title'       => 'キャンセル確認 | すし割烹 いづ浦',
             'reservation' => $reservation,
             'isCanceled'  => ($reservation->status === 'canceled'),
 
@@ -89,7 +89,7 @@ class UserReservationController extends Controller
             }
 
             return view('reservations.cancel.done', [
-                'title'           => 'キャンセル結果 | Lash Brow Ohana',
+                'title'           => 'キャンセル結果 | すし割烹 いづ浦',
                 'reservation'     => $reservation,
                 'alreadyCanceled' => true,
                 'message'         => $message,
@@ -108,7 +108,7 @@ class UserReservationController extends Controller
         ]);
 
         try {
-            $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@lash-brow-ohana.local');
+            $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@izuura.local');
             Mail::to($adminEmail)->send(new AdminReservationCanceledMail($reservation));
 
             // ✅ ユーザー宛：reservation.email が空のケースに備えて、ログインユーザーemailへフォールバック
@@ -135,7 +135,7 @@ class UserReservationController extends Controller
         }
 
         return view('reservations.cancel.done', [
-            'title'           => 'キャンセル結果 | Lash Brow Ohana',
+            'title'           => 'キャンセル結果 | すし割烹 いづ浦',
             'reservation'     => $reservation,
             'alreadyCanceled' => false,
             'message'         => '予約をキャンセルしました。',
@@ -293,7 +293,7 @@ class UserReservationController extends Controller
                 Mail::to($reservation->email)->send(new ReservationConfirmedMail($reservation));
             }
 
-            $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@lash-brow-ohana.local');
+            $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@izuura.local');
             Mail::to($adminEmail)->send(new AdminReservationNoticeMail($reservation));
         } catch (\Throwable $e) {
             Log::error('[マイページ予約メール送信エラー]', [

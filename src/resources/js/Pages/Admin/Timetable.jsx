@@ -4,19 +4,18 @@ import { Link, router, usePage } from "@inertiajs/react";
 import { route } from "ziggy-js";
 import "../../../css/pages/admin/timetable.css";
 
-/**
- * 固定レーン
- * - 予約は常に lane=1（枠1）
- * - 管理者ブロックは lane=2/3（枠2/調整枠）
- */
 const LANES = [
-    { id: 1, label: "枠1", sub: "予約" },
-    { id: 2, label: "枠2", sub: "ブロック" },
-    { id: 3, label: "調整枠", sub: "ブロック" },
+    { id: 1, label: "座敷A", sub: "テーブル" },
+    { id: 2, label: "座敷B", sub: "テーブル" },
+    { id: 3, label: "個室1", sub: "テーブル" },
+    { id: 4, label: "個室2", sub: "テーブル" },
+    { id: 5, label: "テーブル1", sub: "テーブル" },
+    { id: 6, label: "テーブル2", sub: "テーブル" },
+    { id: 7, label: "テーブル3", sub: "テーブル" },
 ];
 
-const SLOT_MINUTES = 15;
-const SLOT_WIDTH_PX = 44; // 15分=1枠の横幅（CSSとも合わせやすい固定値）
+const SLOT_MINUTES = 30;
+const SLOT_WIDTH_PX = 44; // 30分=1枠の横幅
 const LANE_LABEL_WIDTH_PX = 120;
 
 function pad2(n) {
@@ -103,29 +102,33 @@ function buildDurationOptions(maxMinutes = 600) {
  * ReservationForm の項目に合わせた表示行を作る
  * 優先：name / phone / email / service
  */
-function buildDisplayLines(item, getServiceNameById) {
+function buildDisplayLines(item) {
     const name = item?.name ? String(item.name) : "";
     const phone = item?.phone ? String(item.phone) : "";
-    const email = item?.email ? String(item.email) : "";
-
-    // サービス名の取得（APIの形が違っても吸収）
-    const serviceId = item?.service_id ?? item?.serviceId ?? "";
-    const serviceName =
-        item?.service_name ||
-        item?.serviceName ||
-        item?.service?.name ||
-        (serviceId ? getServiceNameById(serviceId) : "") ||
-        "";
+    const partySize = item?.party_size ? Number(item.party_size) : 0;
+    const seatPref = item?.seat_preference || "";
+    const seatLabels = {
+        tatami: "座敷希望",
+        private: "個室希望",
+        regular: "テーブル席希望",
+    };
 
     const lines = [];
-    if (name) lines.push(name);
+    if (name) {
+        const partySuffix = partySize > 0 ? `  ${partySize}名` : "";
+        lines.push(name + partySuffix);
+    } else if (partySize > 0) {
+        lines.push(`${partySize}名`);
+    }
     if (phone) lines.push(phone);
-    if (email) lines.push(email);
-    if (serviceName) lines.push(serviceName);
+    if (seatPref && seatLabels[seatPref]) {
+        lines.push(seatLabels[seatPref]);
+    }
 
-    // 備考を出したい場合（長いので控えめに）
-    // const notes = item?.notes ? String(item.notes) : "";
-    // if (notes) lines.push(notes.length > 22 ? `${notes.slice(0, 22)}…` : notes);
+    const notes = item?.notes ? String(item.notes) : "";
+    if (notes.includes("座敷結合")) {
+        lines.push("座敷結合（A+B）");
+    }
 
     return lines;
 }
@@ -157,34 +160,7 @@ export default function Timetable() {
 
     const [reservations, setReservations] = useState([]);
     const [blocks, setBlocks] = useState([]);
-
-    // ReservationForm と同様：サービス一覧（メニュー）を取得して select に使う
-    const [services, setServices] = useState([]);
-
-    useEffect(() => {
-        let mounted = true;
-        (async () => {
-            try {
-                const res = await fetch("/api/services", {
-                    headers: { Accept: "application/json" },
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-                if (mounted && Array.isArray(data)) setServices(data);
-            } catch {
-                // 取得失敗してもタイムテーブル自体は動かす
-            }
-        })();
-        return () => {
-            mounted = false;
-        };
-    }, []);
-
-    const getServiceNameById = (id) => {
-        const sid = String(id ?? "");
-        const hit = services.find((s) => String(s.id) === sid);
-        return hit?.name ? String(hit.name) : "";
-    };
+    const [tables, setTables] = useState([]);
 
     // ブロック作成/編集モーダル
     const [modalOpen, setModalOpen] = useState(false);
@@ -193,15 +169,14 @@ export default function Timetable() {
     const [modalError, setModalError] = useState("");
     const [saving, setSaving] = useState(false);
 
-    // ReservationForm の項目に合わせる（name / phone / email / service_id / notes）
+    // ブロック作成フォーム
     const [form, setForm] = useState({
-        lane: 2,
+        lane: 1,
         start_time: "09:00",
         duration_minutes: 60,
         name: "",
         phone: "",
-        email: "",
-        service_id: "",
+        party_size: "",
         notes: "",
     });
 
@@ -303,7 +278,7 @@ export default function Timetable() {
                         return {
                             type: "reservation",
                             ...r,
-                            lane: 1,
+                            lane: Number(r.table_id) || 1,
                             start_time: st,
                             end_time: fallbackEnd,
                             // name/phone/email/service_id/notes は r のまま入ってくる想定
@@ -331,6 +306,9 @@ export default function Timetable() {
                 : [];
 
             setBusinessHour(nextBh);
+            if (Array.isArray(data?.tables)) {
+                setTables(data.tables);
+            }
             setReservations(nextReservations);
             setBlocks(nextBlocks);
         } catch (e) {
@@ -389,13 +367,12 @@ export default function Timetable() {
         setModalError("");
 
         setForm({
-            lane: 2,
+            lane: 1,
             start_time: timeOptions[0] || openHHmm,
             duration_minutes: 60,
             name: "",
             phone: "",
-            email: "",
-            service_id: "",
+            party_size: "",
             notes: "",
         });
 
@@ -410,13 +387,12 @@ export default function Timetable() {
         const dur = diffMinutes(block.start_time, block.end_time);
 
         setForm({
-            lane: Number(block.lane) || 2,
+            lane: Number(block.lane) || 1,
             start_time: extractHHmm(block.start_time) || openHHmm,
             duration_minutes: dur && dur > 0 ? dur : Number(block.duration_minutes) || 60,
             name: block.name || "",
             phone: block.phone || "",
-            email: block.email || "",
-            service_id: String(block.service_id ?? block.serviceId ?? "") || "",
+            party_size: block.party_size ? String(block.party_size) : "",
             notes: block.notes || "",
         });
 
@@ -432,7 +408,7 @@ export default function Timetable() {
     const validateBlock = () => {
         const dur = Number(form.duration_minutes) || 0;
         if (dur <= 0 || dur % SLOT_MINUTES !== 0) {
-            return "所要時間は15分刻みで指定してください。";
+            return "所要時間は30分刻みで指定してください。";
         }
 
         const sMin = hhmmToMinutes(form.start_time);
@@ -442,7 +418,7 @@ export default function Timetable() {
         if (closeMin != null && sMin + dur > closeMin) return "終了時刻が営業時間を超えています。";
 
         const lane = Number(form.lane);
-        if (![2, 3].includes(lane)) return "レーンは「枠2」または「調整枠」を選択してください。";
+        if (lane < 1 || lane > 7) return "テーブルを選択してください。";
 
         return "";
     };
@@ -469,8 +445,7 @@ export default function Timetable() {
                 // ReservationForm と同じ項目
                 name: form.name || null,
                 phone: form.phone || null,
-                email: form.email || null,
-                service_id: form.service_id ? Number(form.service_id) : null,
+                party_size: form.party_size ? Number(form.party_size) : null,
                 notes: form.notes || null,
             };
 
@@ -571,7 +546,7 @@ export default function Timetable() {
         for (const lane of LANES) by.set(lane.id, []);
 
         const all = [
-            ...reservations.map((r) => ({ ...r, lane: 1, type: "reservation" })),
+            ...reservations.map((r) => ({ ...r, type: "reservation" })),
             ...blocks.map((b) => ({ ...b, type: "block" })),
         ];
 
@@ -611,7 +586,7 @@ export default function Timetable() {
         const left = startIndex * SLOT_WIDTH_PX;
         const width = span * SLOT_WIDTH_PX;
 
-        const lines = buildDisplayLines(item, getServiceNameById);
+        const lines = buildDisplayLines(item);
         const timeLabel = `${extractHHmm(item.start_time) || ""}〜${extractHHmm(item.end_time) || ""}`;
 
         const isReservation = item.type === "reservation";
@@ -739,9 +714,9 @@ export default function Timetable() {
             ) : (
                 <div className="admin-timetable-card">
                     <div className="admin-timetable-hint">
-                        <span className="admin-timetable-hint__badge">15分刻み</span>
+                        <span className="admin-timetable-hint__badge">30分刻み</span>
                         <span className="admin-timetable-hint__text">
-                            予約は <b>枠1</b> に表示。枠2/調整枠は管理者ブロックで使用します。
+                            予約はテーブルごとの列に表示されます。登録テーブル数: {tables.length}
                         </span>
                     </div>
 
@@ -861,15 +836,18 @@ export default function Timetable() {
 
                             <div className="timetable-form-grid">
                                 <label className="timetable-form-field">
-                                    <span className="timetable-form-label">レーン</span>
+                                    <span className="timetable-form-label">テーブル</span>
                                     <select
                                         className="timetable-form-input"
                                         value={form.lane}
                                         onChange={(e) => setForm((p) => ({ ...p, lane: Number(e.target.value) }))}
                                         disabled={saving}
                                     >
-                                        <option value={2}>枠2</option>
-                                        <option value={3}>調整枠</option>
+                                        {LANES.map((l) => (
+                                            <option key={l.id} value={l.id}>
+                                                {l.label}
+                                            </option>
+                                        ))}
                                     </select>
                                 </label>
 
@@ -934,28 +912,17 @@ export default function Timetable() {
                                 </label>
 
                                 <label className="timetable-form-field">
-                                    <span className="timetable-form-label">メール</span>
-                                    <input
-                                        className="timetable-form-input"
-                                        value={form.email}
-                                        onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                                        disabled={saving}
-                                        placeholder="例）example@mail.com"
-                                    />
-                                </label>
-
-                                <label className="timetable-form-field timetable-form-field--full">
-                                    <span className="timetable-form-label">メニュー</span>
+                                    <span className="timetable-form-label">人数</span>
                                     <select
                                         className="timetable-form-input"
-                                        value={form.service_id}
-                                        onChange={(e) => setForm((p) => ({ ...p, service_id: e.target.value }))}
+                                        value={form.party_size}
+                                        onChange={(e) => setForm((p) => ({ ...p, party_size: e.target.value }))}
                                         disabled={saving}
                                     >
-                                        <option value="">選択してください</option>
-                                        {services.map((s) => (
-                                            <option key={s.id} value={s.id}>
-                                                {s.name}（{s.duration_minutes}分）
+                                        <option value="">未指定</option>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                                            <option key={n} value={n}>
+                                                {n}名
                                             </option>
                                         ))}
                                     </select>

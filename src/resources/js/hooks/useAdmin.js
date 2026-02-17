@@ -37,6 +37,13 @@ export function useAdmin() {
             icon: Users,
             color: 'bg-orange-600',
         },
+        {
+            title: "宴会管理",
+            description: "宴会問い合わせとデポジット決済状況を管理します。",
+            route: 'admin.banquet.index',
+            icon: CalendarDays,
+            color: 'bg-red-600',
+        },
     ];
 
     const checkPermission = (permission) => {

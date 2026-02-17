@@ -21,6 +21,7 @@ class AdminBlock extends Model
         'phone',
         'service_id',
         'notes',
+        'party_size',
     ];
 
     protected $casts = [

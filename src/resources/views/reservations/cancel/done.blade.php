@@ -1,5 +1,15 @@
 {{-- /resources/views/reservations/cancel/done.blade.php --}}
 
+@php
+    $brand = $brand ?? [];
+    $brandName    = $brand['name']    ?? ($appName ?? config('app.name', 'すし割烹 いづ浦'));
+    $colors       = $brand['colors']  ?? [];
+    $colorMain    = $colors['main']   ?? '#2F4F3E';
+    $colorAccent  = $colors['accent'] ?? '#CDAF63';
+    $colorBg      = $colors['bg']     ?? '#F1F1EF';
+    $colorText    = $colors['text']   ?? '#3A2F29';
+@endphp
+
 <!doctype html>
 <html lang="ja">
 <head>
@@ -8,7 +18,6 @@
     <title>{{ $title ?? 'キャンセル結果 | ' . config('app.name') }}</title>
 </head>
 <body style="margin:0; padding:0; background:{{ $colorBg }}; color:{{ $colorText }}; font-family:-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', Meiryo, Arial, sans-serif; line-height:1.7;">
-@include('emails.partials.brand-config')
 
 @php
     // routes/web.php の最小実装（文字列HTML）と互換を持たせるため、変数はすべてフォールバックありにしています

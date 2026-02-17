@@ -9,17 +9,17 @@ const RESERVATION_BASE_URL = '/reservations'; // 一般ユーザー向け予約A
  */
 
 /**
- * 指定された日付とサービスに基づき、予約可能な空き時間枠を取得します。
+ * 指定された日付と人数に基づき、予約可能な空き時間枠を取得します。
  * * @param {string} date - 確認する日付 (形式: YYYY-MM-DD)
- * @param {number} serviceId - 選択されたサービスのID
+ * @param {number} partySize - 予約人数
  * @returns {Promise<Array<Object>>} 予約可能な時間スロットの配列 (例: [{ start: '10:00', end: '11:00' }, ...])
  */
-export const checkAvailability = async (date, serviceId) => {
+export const checkAvailability = async (date, partySize) => {
     try {
-        const response = await api.get(`${RESERVATION_BASE_URL}/availability`, {
+        const response = await api.get(`${RESERVATION_BASE_URL}/check`, {
             params: {
                 date: date,
-                service_id: serviceId,
+                party_size: partySize,
             }
         });
         return response.data.available_slots;

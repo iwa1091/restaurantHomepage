@@ -135,6 +135,7 @@ export default function ReservationEdit() {
 
     // ✅ サービス一覧（メニュー）取得用
     const [services, setServices] = useState([]);
+    const [tables, setTables] = useState([]);
 
     // ✅ 初期値（ReservationForm/Timetable と同じ項目に揃える）
     const [formData, setFormData] = useState(() => {
@@ -166,6 +167,9 @@ export default function ReservationEdit() {
                     : reservation?.service?.id != null
                         ? String(reservation.service.id)
                         : "",
+            party_size: reservation?.party_size ? Number(reservation.party_size) : 1,
+            table_id: reservation?.table_id != null ? String(reservation.table_id) : "",
+            seat_preference: reservation?.seat_preference || "",
 
             service_duration: initialDuration, // 所要時間（分）※内部計算用
         };
@@ -256,6 +260,9 @@ export default function ReservationEdit() {
                     : reservation?.service?.id != null
                         ? String(reservation.service.id)
                         : "",
+            party_size: reservation?.party_size ? Number(reservation.party_size) : prev.party_size,
+            table_id: reservation?.table_id != null ? String(reservation.table_id) : prev.table_id,
+            seat_preference: reservation?.seat_preference || prev.seat_preference,
             service_duration: nextDuration,
         }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -303,6 +310,31 @@ export default function ReservationEdit() {
         return () => {
             mounted = false;
         };
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+
+        async function fetchTables() {
+            try {
+                const dateParam = formData.date || new Date().toISOString().slice(0, 10);
+                const res = await window.axios.get("/admin/api/timetable", {
+                    params: { date: dateParam },
+                    headers: { Accept: "application/json" },
+                });
+                if (mounted && Array.isArray(res.data?.tables)) {
+                    setTables(res.data.tables);
+                }
+            } catch (e) {
+                console.error("テーブル一覧取得失敗:", e);
+            }
+        }
+
+        fetchTables();
+        return () => {
+            mounted = false;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     /**
@@ -548,6 +580,8 @@ export default function ReservationEdit() {
             notes: formData.notes,
 
             service_id: formData.service_id ? Number(formData.service_id) : null,
+            party_size: Number(formData.party_size) || 1,
+            table_id: formData.table_id ? Number(formData.table_id) : null,
 
             date: normalizeYmd(formData.date),
             start_time: normalizeHHmm(formData.start_time),
@@ -644,6 +678,69 @@ export default function ReservationEdit() {
                         </select>
                     </div>
 
+                    {/* 人数 */}
+                    <div className="admin-reservation-edit-field">
+                        <label className="admin-reservation-edit-label">人数</label>
+                        <select
+                            name="party_size"
+                            value={formData.party_size}
+                            onChange={(e) => {
+                                setIsDirty(true);
+                                setFormData((prev) => ({ ...prev, party_size: Number(e.target.value) }));
+                            }}
+                            className="admin-reservation-edit-input"
+                        >
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                                <option key={n} value={n}>
+                                    {n}名
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* テーブル割り当て */}
+                    <div className="admin-reservation-edit-field">
+                        <label className="admin-reservation-edit-label">テーブル</label>
+                        <select
+                            name="table_id"
+                            value={formData.table_id}
+                            onChange={(e) => {
+                                setIsDirty(true);
+                                setFormData((prev) => ({ ...prev, table_id: e.target.value }));
+                            }}
+                            className="admin-reservation-edit-input"
+                        >
+                            <option value="">未割当</option>
+                            {tables.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                    {t.name}（{t.capacity}名席）
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* 席タイプ希望（お客様入力・読み取り専用） */}
+                    {formData.seat_preference && (
+                        <div className="admin-reservation-edit-field">
+                            <label className="admin-reservation-edit-label">席タイプ希望</label>
+                            <div
+                                style={{
+                                    padding: "8px 12px",
+                                    backgroundColor: "#f5f5f5",
+                                    borderRadius: "4px",
+                                    color: "#333",
+                                    fontSize: "14px",
+                                }}
+                            >
+                                {{
+                                    tatami: "座敷",
+                                    private: "個室",
+                                    regular: "テーブル席",
+                                }[formData.seat_preference] || formData.seat_preference}
+                            </div>
+                        </div>
+                    )}
+
                     {/* 備考 */}
                     <div className="admin-reservation-edit-field">
                         <label className="admin-reservation-edit-label">備考</label>
@@ -721,8 +818,7 @@ export default function ReservationEdit() {
                         disabled={
                             isCanceled ||
                             !formData.date ||
-                            !normalizeHHmm(formData.start_time) ||
-                            !formData.service_id
+                            !normalizeHHmm(formData.start_time)
                         }
                         title={!normalizeHHmm(formData.start_time) ? "時間を選択してください" : ""}
                     >

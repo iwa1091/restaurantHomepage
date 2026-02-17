@@ -16,7 +16,7 @@ class PublicReservationCancelController extends Controller
     {
         $reservation->load('service');
 
-        $title = 'キャンセル確認 | Lash Brow Ohana';
+        $title = 'キャンセル確認 | すし割烹 いづ浦';
         $isCanceled = ($reservation->status === 'canceled');
 
         $name = e($reservation->name ?? '');
@@ -61,7 +61,7 @@ class PublicReservationCancelController extends Controller
 <div style="max-width:720px; margin:24px auto; padding:0 16px;">
   <div style="background:#fff; border:1px solid rgba(0,0,0,0.10); border-radius:12px; overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.08);">
     <div style="background:#2F4F3E; color:#fff; padding:16px 18px;">
-      <div style="font-weight:700; letter-spacing:.03em;">Lash Brow Ohana</div>
+      <div style="font-weight:700; letter-spacing:.03em;">すし割烹 いづ浦</div>
     </div>
     <div style="padding:18px;">
       <p style="margin:0 0 12px 0;">' . e($bodyMessage) . '</p>
@@ -79,7 +79,7 @@ class PublicReservationCancelController extends Controller
       </p>
     </div>
     <div style="padding:14px 18px; border-top:1px solid rgba(0,0,0,0.06); color:rgba(0,0,0,0.60); font-size:12px; text-align:center;">
-      &copy; ' . date('Y') . ' Lash Brow Ohana
+      &copy; ' . date('Y') . ' すし割烹 いづ浦
     </div>
   </div>
 </div>
@@ -99,7 +99,7 @@ class PublicReservationCancelController extends Controller
             $reservation->update(['status' => 'canceled']);
 
             try {
-                $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@lash-brow-ohana.local');
+                $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@izuura.local');
                 Mail::to($adminEmail)->send(new AdminReservationCanceledMail($reservation));
 
                 if (!empty($reservation->email)) {
@@ -122,13 +122,13 @@ class PublicReservationCancelController extends Controller
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>キャンセル結果 | Lash Brow Ohana</title>
+<title>キャンセル結果 | すし割烹 いづ浦</title>
 </head>
 <body style="margin:0; padding:0; background:#F1F1EF; color:#3A2F29; font-family:-apple-system, BlinkMacSystemFont, \'Hiragino Kaku Gothic ProN\', Meiryo, Arial, sans-serif; line-height:1.7;">
 <div style="max-width:720px; margin:24px auto; padding:0 16px;">
   <div style="background:#fff; border:1px solid rgba(0,0,0,0.10); border-radius:12px; overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.08);">
     <div style="background:#2F4F3E; color:#fff; padding:16px 18px;">
-      <div style="font-weight:700; letter-spacing:.03em;">Lash Brow Ohana</div>
+      <div style="font-weight:700; letter-spacing:.03em;">すし割烹 いづ浦</div>
     </div>
     <div style="padding:18px;">
       <p style="margin:0 0 12px 0;">' . e($message) . '</p>
@@ -137,7 +137,7 @@ class PublicReservationCancelController extends Controller
       </a>
     </div>
     <div style="padding:14px 18px; border-top:1px solid rgba(0,0,0,0.06); color:rgba(0,0,0,0.60); font-size:12px; text-align:center;">
-      &copy; ' . date('Y') . ' Lash Brow Ohana
+      &copy; ' . date('Y') . ' すし割烹 いづ浦
     </div>
   </div>
 </div>

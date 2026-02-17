@@ -21,7 +21,7 @@ class AdminReservationController extends Controller
      */
     public function index(Request $request)
     {
-        $reservations = Reservation::with(['service', 'user'])
+        $reservations = Reservation::with(['service', 'user', 'table'])
             ->orderBy('date', 'desc')
             ->orderBy('start_time', 'desc')
             ->paginate(15)
@@ -34,6 +34,9 @@ class AdminReservationController extends Controller
                 'email'         => $r->email,
                 'status'        => $r->status,
                 'notes'         => $r->notes,
+                'party_size'    => $r->party_size,
+                'table_id'      => $r->table_id,
+                'table_name'    => $r->table?->name,
                 'service_name'  => $r->service?->name,
                 'duration'      => $r->service?->duration_minutes,  // 所要時間も表示
                 'user_id'       => $r->user_id,
@@ -62,7 +65,7 @@ class AdminReservationController extends Controller
             'include_canceled' => ['nullable', 'boolean'],
         ]);
 
-        $query = Reservation::with(['service', 'user'])
+        $query = Reservation::with(['service', 'user', 'table'])
             ->orderBy('date', 'desc')
             ->orderBy('start_time', 'desc');
 
@@ -89,6 +92,9 @@ class AdminReservationController extends Controller
                 'email'         => $r->email,
                 'status'        => $r->status,
                 'notes'         => $r->notes,
+                'party_size'    => $r->party_size,
+                'table_id'      => $r->table_id,
+                'table_name'    => $r->table?->name,
                 'service_name'  => $r->service?->name,
                 'duration'      => $r->service?->duration_minutes, // 所要時間も返す
                 'user_id'       => $r->user_id,
@@ -134,7 +140,7 @@ class AdminReservationController extends Controller
     public function edit($id)
     {
         // 予約情報 + サービス・ユーザーを取得
-        $reservation = Reservation::with(['service', 'user'])->findOrFail($id);
+        $reservation = Reservation::with(['service', 'user', 'table'])->findOrFail($id);
 
         // ✅ 予約日の年月に合わせて営業時間（business_hours）を取得
         //    データが無ければ seed してから取得する
@@ -167,6 +173,9 @@ class AdminReservationController extends Controller
                 'service_id'   => $reservation->service_id,
                 'service_name' => $reservation->service?->name,
                 'duration'     => $reservation->service?->duration_minutes,
+                'table_id'     => $reservation->table_id,
+                'party_size'   => $reservation->party_size,
+                'seat_preference' => $reservation->seat_preference,
 
                 'service' => $reservation->service ? [
                     'id'               => $reservation->service->id,
@@ -205,16 +214,16 @@ class AdminReservationController extends Controller
             'notes'      => ['nullable', 'string', 'max:1000'],   // ✅ 追加（上限は運用に合わせて）
             'date'       => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
-            'service_id' => ['required', 'exists:services,id'],
+            'service_id' => ['nullable', 'exists:services,id'],
+            'table_id'   => ['nullable', 'exists:tables,id'],
+            'party_size' => ['nullable', 'integer', 'min:1', 'max:8'],
         ]);
-
-        $service = Service::findOrFail($validated['service_id']);
 
         $startDateTime = Carbon::createFromFormat(
             'Y-m-d H:i',
             $validated['date'] . ' ' . $validated['start_time']
         );
-        $endDateTime = (clone $startDateTime)->addMinutes($service->duration_minutes);
+        $endDateTime = (clone $startDateTime)->addHours(2);
 
         $isOverlapping = Reservation::where('date', $validated['date'])
             ->where('status', 'confirmed')
@@ -239,7 +248,9 @@ class AdminReservationController extends Controller
             'date'       => $validated['date'],
             'start_time' => $startDateTime->format('H:i:s'),
             'end_time'   => $endDateTime->format('H:i:s'),
-            'service_id' => $validated['service_id'],
+            'service_id' => $validated['service_id'] ?? null,
+            'table_id'   => $validated['table_id'] ?? $reservation->table_id,
+            'party_size' => $validated['party_size'] ?? $reservation->party_size,
         ]);
 
         if ($reservation->customer_id) {

@@ -1,10 +1,10 @@
 @php
 $brand = $brand ?? [];
 
-$brandName    = $brand['name']    ?? ($appName ?? config('app.name', 'Lash Brow Ohana'));
+$brandName    = $brand['name']    ?? ($appName ?? config('app.name', 'すし割烹 いづ浦'));
 $brandTagline = $brand['tagline'] ?? '眉・まつげ専門サロン｜市原市';
 
-$brandFooterName = $brand['footer_name'] ?? 'Lash Brow Ohana（ラッシュブロウ オハナ）';
+$brandFooterName = $brand['footer_name'] ?? 'すし割烹 いづ浦';
 $brandFooterAddr = $brand['footer_addr'] ?? '千葉県市原市';
 
 $brandLogoUrl = $brand['logo_url'] ?? null;

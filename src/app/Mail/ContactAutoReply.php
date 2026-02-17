@@ -19,7 +19,7 @@ class ContactAutoReply extends Mailable
 
     public function build()
     {
-        return $this->subject('【Lash Brow Ohana】お問い合わせありがとうございます')
+        return $this->subject('【すし割烹 いづ浦】お問い合わせありがとうございます')
             ->view('emails.contact-autoreply')
             ->with(['data' => $this->data]);
     }

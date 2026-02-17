@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use App\Models\Reservation;
 use App\Models\BusinessHour;
 use App\Models\AdminBlock;
+use App\Models\Table;
 
 class TimetableController extends Controller
 {
@@ -30,7 +31,7 @@ class TimetableController extends Controller
         // ※ Timetable.jsx は基本 /admin/api/timetable を叩きますが、
         //    初期表示の保険として end_time / notes / service_name も返しておく
         $reservations = Reservation::query()
-            ->with('service')
+            ->with(['service', 'table'])
             ->whereDate('date', $date)
             ->orderBy('start_time')
             ->get([
@@ -43,6 +44,9 @@ class TimetableController extends Controller
                 'phone',
                 'notes',
                 'service_id',
+                'table_id',
+                'party_size',
+                'seat_preference',
             ])
             ->map(function ($r) {
                 return [
@@ -56,6 +60,10 @@ class TimetableController extends Controller
                     'notes'        => $r->notes,
                     'service_id'   => $r->service_id,
                     'service_name' => $r->service?->name,
+                    'table_id'     => $r->table_id,
+                    'table_name'   => $r->table?->name,
+                    'party_size'   => $r->party_size,
+                    'seat_preference' => $r->seat_preference,
                     'duration_minutes' => $r->service?->duration_minutes,
                 ];
             });
@@ -116,7 +124,7 @@ class TimetableController extends Controller
         // reservations（当日分）
         // ----------------------------
         $reservations = Reservation::query()
-            ->with('service')
+            ->with(['service', 'table'])
             ->whereDate('date', $date)
             ->orderBy('start_time')
             ->get([
@@ -130,6 +138,9 @@ class TimetableController extends Controller
                 'notes',
                 'service_id',
                 'status',
+                'table_id',
+                'party_size',
+                'seat_preference',
             ])
             ->map(function ($r) {
                 return [
@@ -144,6 +155,10 @@ class TimetableController extends Controller
                     'status'       => $r->status,
                     'service_id'   => $r->service_id,
                     'service_name' => $r->service?->name,
+                    'table_id'     => $r->table_id,
+                    'table_name'   => $r->table?->name,
+                    'party_size'   => $r->party_size,
+                    'seat_preference' => $r->seat_preference,
                     'duration_minutes' => $r->service?->duration_minutes,
                 ];
             })
@@ -171,6 +186,7 @@ class TimetableController extends Controller
                     'email'      => $b->email ?? null,
                     'phone'      => $b->phone ?? null,
                     'notes'      => $b->notes ?? null,
+                    'party_size' => $b->party_size ?? null,
 
                     'service_id'   => $b->service_id ?? null,
                     'service_name' => $b->service?->name,
@@ -182,6 +198,10 @@ class TimetableController extends Controller
         return response()->json([
             'date' => $date,
             'business_hour' => $businessHour,
+            'tables' => Table::query()
+                ->active()
+                ->orderBy('sort_order')
+                ->get(['id', 'name', 'type', 'capacity', 'sort_order']),
             'reservations' => $reservations,
             'blocks' => $blocks,
         ]);

@@ -11,8 +11,11 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Customer; // ★ 追加：顧客モデル
+use App\Models\BanquetInquiry;
 use App\Mail\AdminOrderNotificationMail;
 use App\Mail\UserOrderConfirmationMail;
+use App\Mail\BanquetDepositConfirmedMail;
+use App\Mail\AdminBanquetDepositPaidMail;
 use Carbon\Carbon;
 
 class StripeWebhookController extends Controller
@@ -52,6 +55,26 @@ class StripeWebhookController extends Controller
             case 'checkout.session.completed':
                 $session = $event->data->object;
                 Log::info('✅ Checkout completed Webhook received', ['session_id' => $session->id]);
+
+                $banquetId = $session->metadata->banquet_inquiry_id ?? null;
+                if ($banquetId) {
+                    $inquiry = BanquetInquiry::find($banquetId);
+                    if ($inquiry && $inquiry->deposit_status !== 'paid') {
+                        $inquiry->update([
+                            'status' => 'deposit_paid',
+                            'deposit_status' => 'paid',
+                            'stripe_payment_id' => $session->payment_intent ?? null,
+                            'deposit_paid_at' => now(),
+                        ]);
+
+                        Mail::to($inquiry->email)->send(new BanquetDepositConfirmedMail($inquiry));
+
+                        $adminEmail = env('MAIL_ADMIN_ADDRESS', 'admin@izuura.local');
+                        Mail::to($adminEmail)->send(new AdminBanquetDepositPaidMail($inquiry));
+                    }
+
+                    return response('Banquet deposit processed', 200);
+                }
 
                 // ✅ 非同期決済などで paid じゃない可能性があるため、paid のみ確定処理にする
                 if (($session->payment_status ?? null) !== 'paid') {
