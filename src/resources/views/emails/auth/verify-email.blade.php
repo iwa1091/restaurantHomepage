@@ -1,3 +1,23 @@
+@php
+/**
+ * ブランド設定（メール用）
+ * CSS変数が使えないため固定値で定義
+ */
+$brand = $brand ?? [];
+
+$brandName    = $brand['name']    ?? ($appName ?? config('app.name', 'すし割烹 いづ浦'));
+$brandTagline = $brand['tagline'] ?? 'すし・割烹｜千葉県九十九里';
+
+$brandFooterName = $brand['footer_name'] ?? 'すし割烹 いづ浦';
+$brandFooterAddr = $brand['footer_addr'] ?? '千葉県山武郡九十九里町';
+
+$colors = $brand['colors'] ?? [];
+$colorMain   = $colors['main']   ?? '#1B2838';
+$colorAccent = $colors['accent'] ?? '#C6A355';
+$colorBg     = $colors['bg']     ?? '#FAF6EF';
+$colorText   = $colors['text']   ?? '#1B2838';
+$colorBoxBg  = $colors['box_bg'] ?? '#F5F0E8';
+@endphp
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -5,7 +25,6 @@
     <title>メールアドレス確認のご案内</title>
 </head>
 <body style="margin:0; padding:0; background-color:{{ $colorBg }};">
-@include('emails.partials.brand-config')
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
     <tr>
         <td align="center" style="padding:24px 12px;">

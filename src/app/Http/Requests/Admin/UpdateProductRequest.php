@@ -20,7 +20,27 @@ class UpdateProductRequest extends FormRequest
             'description' => ['required', 'string'],
             'price'       => ['required', 'numeric', 'min:0'],
             'stock'       => ['required', 'integer', 'min:0'],
-            'image'       => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'image'       => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:512'],
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'name'        => '商品名',
+            'description' => '商品説明',
+            'price'       => '価格',
+            'stock'       => '在庫数',
+            'image'       => '商品画像',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'image.image' => '商品画像には画像ファイルを選択してください。',
+            'image.mimes' => '商品画像はjpeg・png・jpg・gif・webp形式のみ対応しています。',
+            'image.max'   => '商品画像は500KB以内のファイルを選択してください。',
         ];
     }
 }

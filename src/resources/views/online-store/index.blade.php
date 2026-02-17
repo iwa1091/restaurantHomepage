@@ -1,6 +1,6 @@
 @extends('layout.app')
 
-@section('title', 'オンラインストア')
+@section('title', 'ふるさと納税 | すし割烹 いづ浦')
 
 @section('styles')
     {{-- オンラインストア専用CSS --}}
@@ -19,10 +19,10 @@
              ヘッダー
         ============================ --}}
         <div class="store-header">
-            <h1 class="store-title">商品販売</h1>
+            <h1 class="store-title">ふるさと納税</h1>
             <p class="store-subtitle">
-                サロンで使用している厳選されたアイケア商品を販売しております。<br>
-                ご自宅でのケアにお役立てください。
+                九十九里の海の幸を、ふるさと納税の返礼品としてお届けしております。<br>
+                ご自宅で当店の味をお楽しみください。
             </p>
         </div>
 
@@ -37,7 +37,7 @@
                     <input type="text"
                            name="keyword"
                            class="keyword-input"
-                           placeholder="商品名で検索"
+                           placeholder="返礼品名で検索"
                            value="{{ request('keyword') }}">
                 </div>
 
@@ -64,35 +64,6 @@
         ============================ --}}
         <section class="products-section">
             <div class="product-grid">
-
-                {{-- ===========================
-                     外部オンラインストア（固定リンク）
-                ============================ --}}
-                <div class="product-card store-external-card">
-                    <a href="https://member.laesse0715.com/U100496"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="product-link">
-                        <div class="product-image-container store-external-image-container">
-                            <img
-                                src="{{ asset('img/laesse-img.jpg') }}"
-                                alt="外部オンラインストアへのリンク"
-                                class="product-image store-external-image"
-                            >
-                        </div>
-
-                        {{-- 商品情報 --}}
-                        <div class="product-info">
-                            <h3 class="product-name">ラエッセ オンラインストア</h3>
-                            <p class="product-description">
-                                サロンで取り扱いのラエッセ商品はこちらからご購入いただけます。
-                            </p>
-                            <p class="product-description">
-                                ※こちらの商品は別途お取り扱いの店舗の会員登録をお願いしております。
-                            </p>
-                        </div>
-                    </a>
-                </div>
 
                 @forelse ($products as $product)
 
@@ -137,7 +108,7 @@
 
                 @empty
                     <p class="no-products-message">
-                        {{-- 商品が見つかりませんでした。 --}}
+                        現在、登録されている返礼品はありません。
                     </p>
                 @endforelse
 

@@ -1,6 +1,6 @@
 @extends('layout.app')
 
-@section('title', 'メニュー・料金')
+@section('title', 'お品書き | すし割烹 いづ浦')
 
 {{-- ページ専用CSS（新デザイン） --}}
 @section('styles')
@@ -13,10 +13,10 @@
 
         {{-- ページヘッダー --}}
         <div class="menu-header">
-            <h1 class="menu-title">メニュー・料金</h1>
+            <h1 class="menu-title">お品書き</h1>
             <p class="menu-description">
-                お客様のご希望に合わせて、様々なメニューをご用意しております。<br>
-                すべて丁寧なカウンセリング付きです。
+                九十九里の新鮮な海の幸を中心に、旬の食材を活かした料理をご用意しております。<br>
+                季節により内容が変わる場合がございます。
             </p>
         </div>
 
@@ -73,19 +73,12 @@
 
                                 {{-- 価格と予約ボタン --}}
                                 <div class="card-content">
-
                                     <div class="card-price-info">
                                         <span class="card-price">¥{{ number_format($service->price) }}</span>
-                                        <div class="card-duration">
-                                            <span class="duration-text">{{ $service->duration_minutes }}分</span>
-                                        </div>
                                     </div>
-
-                                    <a href="{{ route('reservation.form', ['service_id' => $service->id]) }}"
-                                       class="button-primary btn-reserve">
-                                        予約する
+                                    <a href="{{ route('reservation.form', ['service_id' => $service->id]) }}" class="button-primary btn-reserve">
+                                        ご予約・お問い合わせ
                                     </a>
-
                                 </div>
 
                             </div>
@@ -100,20 +93,17 @@
 
         {{-- 注意事項 --}}
         <section class="notes-section">
-            <h3 class="notes-title">ご注意事項</h3>
-
+            <h3 class="notes-title">ご案内</h3>
             <div class="notes-grid">
                 <div class="note-item">
-                    <p>・駐車場をご用意しております。店舗前「2番」をご利用ください。</p>
-                    <p>・前のお客様の施術状況により、お待ちいただくことがございます。<br>
-                        （駐車場は交代でのご利用にご協力ください。）</p>
+                    <p>・料金は税込価格です。</p>
+                    <p>・仕入れ状況により、メニュー内容・価格が変更になる場合がございます。</p>
+                    <p>・アレルギーをお持ちの方は、事前にご相談ください。</p>
                 </div>
-
                 <div class="note-item">
-                    <p>・ご来店はご予約時間ちょうどを目安にお越しください。</p>
-                    <p>・5分以上前のご来店はご遠慮いただいております。</p>
-                    <p>・眉毛の自己処理はご来店の約2週間前からお控えください。<br>
-                    (1ヶ月ほど手を加えずにご来店いただくのがおすすめです。)</p>
+                    <p>・宴会・法事のコース料理は要予約制です（最大30名様まで対応）。</p>
+                    <p>・営業時間外の日中の法事・宴会もご予約にて承ります。</p>
+                    <p>・ご不明点はお気軽にお電話（080-9704-9500）にてお問い合わせください。</p>
                 </div>
             </div>
         </section>

@@ -12,15 +12,15 @@
 
                     {{-- デスクトップナビ --}}
                     <nav class="desktop-nav" aria-label="メインメニュー">
-                        <a href="{{ route('top') }}" class="nav-link {{ request()->routeIs('top') ? 'is-active' : '' }}">ホーム</a>
-                        <a href="{{ route('menu_price') }}" class="nav-link {{ request()->routeIs('menu_price') ? 'is-active' : '' }}">メニュー・料金</a>
-                        <a href="{{ route('gallery') }}" class="nav-link {{ request()->routeIs('gallery') ? 'is-active' : '' }}">施術事例・お客様の声</a>
-                        <a href="{{ route('online-store.index') }}" class="nav-link {{ request()->routeIs('online-store.index') ? 'is-active' : '' }}">商品販売</a>
+                        <a href="{{ route('top') }}" class="nav-link {{ request()->routeIs('top') ? 'is-active' : '' }}">概要 メニュー</a>
+                        <a href="{{ route('menu_price') }}" class="nav-link {{ request()->routeIs('menu_price') ? 'is-active' : '' }}">コース・お席予約</a>
+                        <a href="{{ route('gallery') }}" class="nav-link {{ request()->routeIs('gallery') ? 'is-active' : '' }}">ギャラリー</a>
+                        <a href="{{ route('online-store.index') }}" class="nav-link {{ request()->routeIs('online-store.index') ? 'is-active' : '' }}">お持ち帰りメニュー お土産</a>
                         <a href="{{ route('contact.form') }}" class="nav-link {{ request()->routeIs('contact.form') ? 'is-active' : '' }}">ご予約・お問い合わせ</a>
                         <a href="{{ route('mypage.index') }}" class="nav-link {{ request()->routeIs('mypage.*') ? 'is-active' : '' }}">マイページ</a>
                     </nav>
 
-                    {{-- ◆ デスクトップ SNS（ナビ右側） --}}
+                    {{-- デスクトップ SNS --}}
                     <div class="desktop-sns">
                         <a href="https://www.instagram.com/" target="_blank" class="sns-icon-link" aria-label="Instagram">
                             <img src="{{ asset('img/icon-instagram.svg') }}" class="sns-icon" alt="Instagram">
@@ -44,9 +44,7 @@
         </div>
     </header>
 
-    {{-- ================================
-          モバイルメニュー Overlay
-       =================================== --}}
+    {{-- モバイルメニュー Overlay --}}
     <div x-show="open" x-transition.opacity @click.self="open = false" class="mobile-menu-overlay" x-cloak>
 
         <div
@@ -80,16 +78,16 @@
 
             {{-- ロゴ --}}
             <div class="mobile-logo-wrapper">
-                <img src="{{ asset('img/logo.jpg') }}" alt="{{ config('app.name') }} ロゴ" class="mobile-logo">
+                <img src="{{ asset('img/1top-img.png') }}" alt="{{ config('app.name') }} ロゴ" class="mobile-logo">
                 <span class="site-title-mobile">{{ config('app.name') }}</span>
             </div>
 
             {{-- モバイルメニュー --}}
             <div class="mobile-nav-list">
-                <a href="{{ route('top') }}" class="mobile-nav-link {{ request()->routeIs('top') ? 'is-active' : '' }}">ホーム</a>
-                <a href="{{ route('menu_price') }}" class="mobile-nav-link {{ request()->routeIs('menu_price') ? 'is-active' : '' }}">メニュー・料金</a>
-                <a href="{{ route('gallery') }}" class="mobile-nav-link {{ request()->routeIs('gallery') ? 'is-active' : '' }}">施術事例・お客様の声</a>
-                <a href="{{ route('online-store.index') }}" class="mobile-nav-link {{ request()->routeIs('online-store.index') ? 'is-active' : '' }}">商品販売</a>
+                <a href="{{ route('top') }}" class="mobile-nav-link {{ request()->routeIs('top') ? 'is-active' : '' }}">概要 メニュー</a>
+                <a href="{{ route('menu_price') }}" class="mobile-nav-link {{ request()->routeIs('menu_price') ? 'is-active' : '' }}">コース・お席予約</a>
+                <a href="{{ route('gallery') }}" class="mobile-nav-link {{ request()->routeIs('gallery') ? 'is-active' : '' }}">ギャラリー</a>
+                <a href="{{ route('online-store.index') }}" class="mobile-nav-link {{ request()->routeIs('online-store.index') ? 'is-active' : '' }}">お持ち帰りメニュー お土産</a>
                 <a href="{{ route('contact.form') }}" class="mobile-nav-link {{ request()->routeIs('contact.form') ? 'is-active' : '' }}">ご予約・お問い合わせ</a>
                 <a href="{{ route('mypage.index') }}" class="mobile-nav-link {{ request()->routeIs('mypage.*') ? 'is-active' : '' }}">マイページ</a>
             </div>

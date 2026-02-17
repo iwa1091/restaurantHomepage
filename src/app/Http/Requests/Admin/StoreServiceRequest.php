@@ -22,7 +22,7 @@ class StoreServiceRequest extends FormRequest
             'is_active'        => ['required'],
             'is_popular'       => ['nullable'],
             'category_id'      => ['nullable', 'exists:categories,id'],
-            'image'            => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:1024'],
+            'image'            => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:512'],
             'features'         => ['nullable', 'array'],
             'features.*'       => ['string', 'max:255'],
         ];
@@ -61,7 +61,7 @@ class StoreServiceRequest extends FormRequest
             'category_id.exists'        => '選択したカテゴリは存在しません。',
             'image.image'               => '画像ファイルを選択してください。',
             'image.mimes'               => '画像はjpeg・png・jpg・gif・webp形式のみ対応しています。',
-            'image.max'                 => '画像は1MB以内のファイルを選択してください。',
+            'image.max'                 => '画像は500KB以内のファイルを選択してください。',
             'features.*.max'            => '各特徴は255文字以内で入力してください。',
         ];
     }

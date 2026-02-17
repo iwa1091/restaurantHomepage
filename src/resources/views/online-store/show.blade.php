@@ -1,6 +1,6 @@
 @extends('layout.app')
 
-@section('title', $product->name . ' | 商品詳細')
+@section('title', $product->name . ' | ふるさと納税')
 
 @section('styles')
     @vite(['resources/css/pages/store/public_show.css'])
@@ -24,7 +24,7 @@
         {{-- ※ 戻るリンクはECサイトらしく「ページ上部右寄せ」へ --}}
         <div class="back-link-wrapper">
             <a href="{{ route('online-store.index') }}" class="back-link">
-                ← 商品一覧へ戻る
+                ← 返礼品一覧へ戻る
             </a>
         </div>
 
@@ -52,7 +52,7 @@
                     <form action="{{ route('online-store.checkout', $product->id) }}" method="POST">
                         @csrf
                         <button type="submit" class="buy-button">
-                            購入手続きへ
+                            申し込み手続きへ
                         </button>
                     </form>
                 @else
@@ -62,7 +62,7 @@
                 @endif
             @else
                 <a href="{{ route('register') }}" class="buy-button">
-                    購入には会員登録が必要です
+                    お申し込みには会員登録が必要です
                 </a>
             @endauth
         </div>

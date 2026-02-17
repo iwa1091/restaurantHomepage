@@ -25,7 +25,7 @@ class StoreProductRequest extends FormRequest
             'description' => ['required', 'string'],
             'price'       => ['required', 'numeric', 'min:0'],
             'stock'       => ['required', 'integer', 'min:0'],
-            'image'       => ['required', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:1024'],
+            'image'       => ['required', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:512'],
         ];
     }
 
@@ -67,7 +67,7 @@ class StoreProductRequest extends FormRequest
             'image.required'       => '商品画像は必須です。',
             'image.image'          => '商品画像には画像ファイルを選択してください。',
             'image.mimes'          => '商品画像はjpeg・png・jpg・gif・webp形式のみ対応しています。',
-            'image.max'            => '商品画像は1MB以内のファイルを選択してください。',
+            'image.max'            => '商品画像は500KB以内のファイルを選択してください。',
         ];
     }
 }

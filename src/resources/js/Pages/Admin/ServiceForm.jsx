@@ -12,6 +12,13 @@ export default function ServiceForm({
     categories: initialCategories = [],
 }) {
     const { errors } = usePage().props;
+    const MAX_IMAGE_SIZE = 500 * 1024;
+    const ALLOWED_IMAGE_TYPES = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+    ];
 
     // ✅ Inertia の useForm フックを使用
     const { data, setData, processing } = useForm({
@@ -30,6 +37,7 @@ export default function ServiceForm({
     const [categories, setCategories] = useState(initialCategories);
     const [showModal, setShowModal] = useState(false);
     const [featureInput, setFeatureInput] = useState("");
+    const [imageError, setImageError] = useState(null);
 
     /** ✅ カテゴリ新規作成後に即反映 */
     const handleCategoryCreated = (newCategory) => {
@@ -47,7 +55,33 @@ export default function ServiceForm({
         if (type === "checkbox") {
             setData(name, checked);
         } else if (type === "file") {
-            setData(name, files[0] ?? null);
+            const file = files?.[0] ?? null;
+            if (!file) {
+                setData(name, null);
+                setImageError(null);
+                return;
+            }
+
+            if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+                setData(name, null);
+                setImageError(
+                    "画像はjpeg/png/gif/webp形式のみアップロードできます。"
+                );
+                e.target.value = "";
+                return;
+            }
+
+            if (file.size > MAX_IMAGE_SIZE) {
+                setData(name, null);
+                setImageError(
+                    "画像は500KB以内のファイルをアップロードしてください。"
+                );
+                e.target.value = "";
+                return;
+            }
+
+            setImageError(null);
+            setData(name, file);
         } else {
             setData(name, value);
         }
@@ -76,9 +110,14 @@ export default function ServiceForm({
         );
     };
 
-    /** ✅ 保存処理 */
+    /** ✅ 保存処理（明示的CSRF対策付き） */
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        const csrfToken =
+            document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute("content") || "";
 
         const formData = new FormData();
 
@@ -92,6 +131,12 @@ export default function ServiceForm({
             }
         });
 
+        const csrfHeaders = {
+            headers: {
+                "X-CSRF-TOKEN": csrfToken,
+            },
+        };
+
         if (service) {
             // 更新時は Laravel 側で PUT として扱わせる
             formData.append("_method", "PUT");
@@ -99,11 +144,13 @@ export default function ServiceForm({
             router.post(route("admin.services.update", service.id), formData, {
                 forceFormData: true,
                 preserveScroll: true,
+                ...csrfHeaders,
             });
         } else {
             router.post(route("admin.services.store"), formData, {
                 forceFormData: true,
                 preserveScroll: true,
+                ...csrfHeaders,
             });
         }
     };
@@ -339,7 +386,7 @@ export default function ServiceForm({
                             accept="image/jpeg,image/png,image/gif,image/webp"
                         />
                         <p className="service-form-hint">
-                            jpeg・png・gif・webp形式、1MB以内のファイルを選択してください。
+                            jpeg・png・gif・webp形式、500KB以内のファイルを選択してください。
                         </p>
                         {service?.image_url && (
                             <img
@@ -348,9 +395,10 @@ export default function ServiceForm({
                                 className="service-form-image-preview"
                             />
                         )}
-                        {errors.image && (
+                        {(imageError || errors.image) && (
                             <div className="service-form-error">
-                                {errors.image}
+                                {imageError ||
+                                    "画像はjpeg/png/gif/webp形式、500KB以内でアップロードしてください。"}
                             </div>
                         )}
                     </div>

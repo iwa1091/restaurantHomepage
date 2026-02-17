@@ -1,145 +1,124 @@
 @extends('layout.app')
 
-@section('title', '施術事例・お客様の声')
+@section('title', 'ギャラリー | すし割烹 いづ浦')
 
-{{-- ページ専用CSS --}}
 @section('styles')
-  @vite(['resources/css/pages/gallery/gallery.css'])
+    @vite(['resources/css/pages/gallery/gallery.css'])
 @endsection
 
 @section('content')
 <div class="gallery-page-container">
 
-    @php
-        /*
-         * Before / After と ギャラリーは DB を使わず
-         * 静的配列としてここで定義する
-         */
-
-        $beforeAfterCases = collect([
-            (object) [
-                'title'       => 'ナチュラルなメンズ眉スタイリング',
-                'description' => '自眉を活かしつつ、余分な毛だけを整えて清潔感をアップ。初めての方にもおすすめの自然なデザインです。',
-            ],
-            (object) [
-                'title'       => '眉ワックス＋ラミネーションで立体感アップ',
-                'description' => '毛流れを整えながら、眉ワックスで輪郭をくっきり。毎朝のメイク時間も短縮できる人気メニューです。',
-            ],
-            (object) [
-                'title'       => 'まつげパーマとアイブロウのトータルケア',
-                'description' => 'まつげと眉を同時にケアすることで、目元全体の印象がワンランクアップ。ナチュラルなのに華やかな仕上がりに。',
-            ],
-        ]);
-
-        // ギャラリーは 4 種類のカードを静的配列で管理
-        $galleryCards = [
-            [
-                'title'       => 'ハーブピーリング',
-                'description' => '天然ハーブ×マイルドなケミカルビーリングに、エクソソーム＆ヒト幹細胞培養液を贅沢配合。　剝離なしで細胞レベルから肌を活性化。敏感肌にも優しく、ハリと透明感のある素肌へ導きます。',
-                'image'       => 'img/herbalpeeling.webp',
-            ],
-            [
-                'title'       => 'エレクトロポレーション',
-                'description' => '特殊な電気バルスと温冷ケアで、美容成分を肌の深部まで浸透。　ホームケアでは届きにくい成分を届け、乾燥・くすみ・毛穴・たるみにアプローチ。美容液は肌状態に合わせてセレクトします。',
-                'image'       => 'img/electroporation.webp',
-            ],
-            [
-                'title'       => '毛穴洗浄',
-                'description' => '毛穴に詰まった皮脂や汚れ、角栓を除去する施術です。全ての施術前に行うことで後の施術の効果を倍増させます。特に黒ずみ・ざらつきの改善に効果的です。',
-                'image'       => 'img/pore_cropped.webp',
-            ],
-            [
-                'title'       => '発毛＆育毛',
-                'description' => 'オゾン・高周波・名のミスとなど５種の機能で皮脂バランスを整え、血行を促進。薄毛や育毛・発毛を目指す方に最適なケアで、頭皮のコリもほぐします。診断に基づき、状態に合わせた丁寧な施術を行います。',
-                'image'       => 'img/hair_treatment_cropped.webp',
-            ],
-        ];
-    @endphp
-
-    {{-- Header --}}
-    <div class="header-section">
-        <h1 class="page-title">
-            施術事例・お客様の声
-        </h1>
-        <p class="page-description">
-            実際の施術事例とお客様からいただいた喜びの声をご紹介します。<br>
-            あなたの理想の目元づくりの参考にしてください。
-        </p>
-    </div>
-
-    {{-- Before / After --}}
-    <section class="mb-20">
-        <h2 class="page-title text-center mb-8">
-            ビフォー・アフター
-        </h2>
-
-        <div class="grid-case">
-            @foreach($beforeAfterCases as $case)
-                <div class="card">
-                    <div class="card-grid-images">
-
-                        {{-- Before --}}
-                        <div class="image-container">
-                            <img src="{{ asset('img/before.png') }}"
-                                 alt="{{ $case->title }} - Before"
-                                 class="image-card">
-                            <div class="badge badge-before">Before</div>
-                        </div>
-
-                        {{-- After --}}
-                        <div class="image-container">
-                            <img src="{{ asset('img/after.png') }}"
-                                 alt="{{ $case->title }} - After"
-                                 class="image-card">
-                            <div class="badge badge-after">After</div>
-                        </div>
-                    </div>
-
-                    <div class="card-content">
-                        <h3 class="card-title">{{ $case->title }}</h3>
-                        <p class="card-description">{{ $case->description }}</p>
-                    </div>
-                </div>
-            @endforeach
+    {{-- =============================
+         ① ヒーローバナー
+    ============================== --}}
+    <section class="gallery-hero">
+        <img src="{{ asset('img/sashimi.webp') }}"
+             alt="九十九里直送の刺身盛り合わせ"
+             class="gallery-hero-img">
+        <div class="gallery-hero-overlay">
+            <h1 class="gallery-hero-title">九十九里の恵みを、一皿に。</h1>
+            <p class="gallery-hero-sub">料理と空間のギャラリー</p>
         </div>
     </section>
 
-    {{-- Gallery --}}
-    <section class="mb-20">
-        <h2 class="page-title text-center mb-8">
-            施術事例ギャラリー
-        </h2>
+    {{-- =============================
+         ② 料理ギャラリー
+    ============================== --}}
+    <section class="gallery-section">
+        <div class="section-header">
+            <h2 class="section-heading">四季折々の味わい</h2>
+            <p class="section-lead">片貝漁港直送の鮮魚を中心に、熟練の技で仕上げる逸品をご覧ください。</p>
+        </div>
 
-        <div class="grid-gallery">
-            @foreach($galleryCards as $card)
-                <div class="card image-wrapper">
-                    <div class="relative">
-                        <img src="{{ asset($card['image']) }}"
-                             alt="{{ $card['title'] }}"
-                             class="image-card">
-                    </div>
-
-                    <div class="card-content">
-                        <h3 class="card-title">{{ $card['title'] }}</h3>
-                        <p class="card-description">
-                            {{ $card['description'] }}
-                        </p>
-                    </div>
+        <div class="food-grid">
+            {{-- メイン（大サイズ）：刺身盛り合わせ --}}
+            <div class="food-card food-card-main">
+                <img src="{{ asset('img/sashimi.webp') }}"
+                     alt="刺身盛り合わせ" class="food-card-img">
+                <div class="food-card-caption">
+                    <h3>刺身盛り合わせ</h3>
+                    <p>片貝漁港直送の鮮魚を贅沢に盛り合わせ。その日の仕入れに合わせた、旬の味覚をお届けします。</p>
                 </div>
-            @endforeach
+            </div>
+
+            {{-- サブ4枚 --}}
+            <div class="food-card">
+                <img src="{{ asset('img/agemono.webp') }}"
+                     alt="揚げ物盛り合わせ" class="food-card-img">
+                <div class="food-card-caption">
+                    <h3>揚げ物盛り合わせ</h3>
+                    <p>半身唐揚げや若鶏の唐揚げなど、ボリューム満点の揚げ物をお楽しみいただけます。</p>
+                </div>
+            </div>
+
+            <div class="food-card">
+                <img src="{{ asset('img/gallery-fugu.webp') }}"
+                     alt="ふぐ料理" class="food-card-img">
+                <div class="food-card-caption">
+                    <h3>ふぐ料理</h3>
+                    <p>九十九里沖の天然フグを、唐揚げ・一夜干し・鍋料理など多彩な調理法でお届けします。</p>
+                </div>
+            </div>
+
+            <div class="food-card">
+                <img src="{{ asset('img/gallery-sashimi.webp') }}"
+                     alt="旬の握り" class="food-card-img">
+                <div class="food-card-caption">
+                    <h3>旬の握り</h3>
+                    <p>職人が一貫一貫丁寧に握る、旬のネタを活かした握り寿司。</p>
+                </div>
+            </div>
+
+            <div class="food-card">
+                <img src="{{ asset('img/gallery-sukiyaki.webp') }}"
+                     alt="すき焼き" class="food-card-img">
+                <div class="food-card-caption">
+                    <h3>すき焼き</h3>
+                    <p>厳選した和牛と旬の野菜を使用。素材の旨みを最大限に引き出す味付けです。</p>
+                </div>
+            </div>
         </div>
     </section>
 
-    {{-- Customer Reviews --}}
-    <section class="mb-16">
-        <h2 class="page-title text-center mb-8">
-            お客様の声
-        </h2>
+    {{-- =============================
+         ③ 満足度スタッツ（料理直後に配置）
+    ============================== --}}
+    <section class="section-stats">
+        <div class="stats-container">
+            <h2 class="section-title">
+                Google口コミ お客様満足度
+            </h2>
 
-        {{-- Googleマップ口コミ要約の注記 --}}
-        <p class="text-center review-note mb-8">
-            ※Googleマップなどでいただいたお声を要約して掲載しています。
-        </p>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">45年</div>
+                    <div class="stat-label">料理人歴</div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-value">30名</div>
+                    <div class="stat-label">最大宴会収容人数</div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-value">★4.9</div>
+                    <div class="stat-label">平均評価</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- =============================
+         ④ お客様の声（スタッツ直後で裏付け）
+    ============================== --}}
+    <section class="gallery-section">
+        <div class="section-header">
+            <h2 class="section-heading">お客様の声</h2>
+            <p class="section-lead review-note">
+                ※Googleマップなどでいただいたお声を要約して掲載しています。
+            </p>
+        </div>
 
         <div class="grid-reviews">
             @foreach($reviews as $review)
@@ -178,29 +157,63 @@
         </div>
     </section>
 
-    {{-- Stats --}}
-    <section class="section-stats">
-        <div class="stats-container">
-            <h2 class="section-title text-center mb-12">
-                Google口コミ お客様満足度
-            </h2>
+    {{-- =============================
+         ⑤ 空間ギャラリー
+    ============================== --}}
+    <section class="gallery-section">
+        <div class="section-header">
+            <h2 class="section-heading">くつろぎの空間</h2>
+            <p class="section-lead">カウンター席からお座敷まで、さまざまなシーンに対応いたします。</p>
+        </div>
 
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-value">9割越え</div>
-                    <div class="stat-label">リピート率</div>
-                </div>
-
-                <div class="stat-item">
-                    <div class="stat-value">1,200+</div>
-                    <div class="stat-label">施術実績</div>
-                </div>
-
-                <div class="stat-item">
-                    <div class="stat-value">★5</div>
-                    <div class="stat-label">平均評価</div>
+        <div class="space-grid">
+            <div class="space-card">
+                <img src="{{ asset('img/gaikan.webp') }}"
+                     alt="外観" class="space-card-img">
+                <div class="space-card-caption">
+                    <h3>外観</h3>
+                    <p>黒を基調とした落ち着いた佇まい。駐車場完備でお車でも安心です。</p>
                 </div>
             </div>
+
+            <div class="space-card">
+                <img src="{{ asset('img/tennnai.webp') }}"
+                     alt="カウンター・テーブル席" class="space-card-img">
+                <div class="space-card-caption">
+                    <h3>カウンター・テーブル席</h3>
+                    <p>目の前で職人の技を楽しめるカウンター席と、ゆったりとしたテーブル席。</p>
+                </div>
+            </div>
+
+            <div class="space-card">
+                <img src="{{ asset('img/ozasiki.webp') }}"
+                     alt="宴会場（お座敷）" class="space-card-img">
+                <div class="space-card-caption">
+                    <h3>宴会場（お座敷）</h3>
+                    <p>最大30名様対応の広々としたお座敷。カラオケ完備で、法事・宴会・会食に最適です。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- =============================
+         ⑥ CTA（予約導線 — 最後に背中を押す）
+    ============================== --}}
+    <section class="gallery-cta">
+        <div class="gallery-cta-inner">
+            <h2 class="gallery-cta-title">ご来店をお待ちしております</h2>
+            <p class="gallery-cta-text">
+                お料理や空間が気に入りましたら、ぜひお気軽にお問い合わせください。
+            </p>
+            <div class="gallery-cta-buttons">
+                <a href="{{ route('contact.form') }}" class="cta-btn cta-btn-primary">
+                    ご予約・お問い合わせ
+                </a>
+                <a href="tel:080-9704-9500" class="cta-btn cta-btn-outline">
+                    お電話でのご予約
+                </a>
+            </div>
+            <p class="gallery-cta-phone">TEL: 080-9704-9500（火〜日 17:00〜22:00）</p>
         </div>
     </section>
 

@@ -8,6 +8,13 @@ import { route } from "ziggy-js";
 import "../../../../css/pages/admin/product/create.css";
 
 export default function Create() {
+    const MAX_IMAGE_SIZE = 500 * 1024;
+    const ALLOWED_IMAGE_TYPES = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+    ];
     const { data, setData, post, processing, errors, reset } = useForm({
         name: "",
         price: "",
@@ -17,9 +24,38 @@ export default function Create() {
     });
 
     const [preview, setPreview] = useState(null);
+    const [imageError, setImageError] = useState(null);
 
     const handleFileChange = (e) => {
         const file = e.target.files?.[0] ?? null;
+        if (!file) {
+            setData("image", null);
+            setPreview(null);
+            setImageError(null);
+            return;
+        }
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            setData("image", null);
+            setPreview(null);
+            setImageError(
+                "画像はjpeg/png/gif/webp形式のみアップロードできます。"
+            );
+            e.target.value = "";
+            return;
+        }
+
+        if (file.size > MAX_IMAGE_SIZE) {
+            setData("image", null);
+            setPreview(null);
+            setImageError(
+                "画像は500KB以内のファイルをアップロードしてください。"
+            );
+            e.target.value = "";
+            return;
+        }
+
+        setImageError(null);
         setData("image", file);
         if (file) {
             setPreview(URL.createObjectURL(file));
@@ -31,8 +67,16 @@ export default function Create() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        const csrfToken =
+            document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute("content") || "";
+
         post(route("admin.products.store"), {
             forceFormData: true, // ✅ ファイル送信を確実にする
+            headers: {
+                "X-CSRF-TOKEN": csrfToken,
+            },
             onSuccess: () => {
                 reset();
                 setPreview(null);
@@ -129,7 +173,7 @@ export default function Create() {
                             accept="image/jpeg,image/png,image/gif,image/webp"
                         />
                         <p className="admin-product-create-hint">
-                            jpeg・png・gif・webp形式、1MB以内のファイルを選択してください。
+                            jpeg・png・gif・webp形式、500KB以内のファイルを選択してください。
                         </p>
                         {preview && (
                             <div className="admin-product-create-preview-wrapper">
@@ -142,9 +186,10 @@ export default function Create() {
                                 </div>
                             </div>
                         )}
-                        {errors.image && (
+                        {(imageError || errors.image) && (
                             <p className="admin-product-create-error">
-                                {errors.image}
+                                {imageError ||
+                                    "画像はjpeg/png/gif/webp形式、500KB以内でアップロードしてください。"}
                             </p>
                         )}
                     </div>

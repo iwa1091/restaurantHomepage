@@ -289,7 +289,7 @@ export default function ReservationForm({ service_id = "" }) {
         setFieldErrors({});
 
         if (!formData.service_id) {
-            setMessage("メニューが選択されていません。メニュー・料金ページから選択してください。");
+            setMessage("メニューが選択されていません。お品書きページから選択してください。");
             return;
         }
 
@@ -373,15 +373,14 @@ export default function ReservationForm({ service_id = "" }) {
             </div>
 
             <h1 className="reservation-title">ご予約フォーム</h1>
+            <p className="reservation-subtitle">
+                ご希望のメニュー・日時をお選びいただき、ご予約ください。<br />
+                お電話でのご予約も承っております（080-9704-9500）
+            </p>
 
             <form onSubmit={handleSubmit} className="reservation-form-card" noValidate>
                 {/* ✅ メニュー（表示のみ：menu_price で選択済み想定） */}
                 <div className="reservation-field">
-                    <label className="reservation-label">
-                        ※眉毛の自己処理はご来店の約2週間前からお控えください。<br />
-                        (1ヶ月ほど手を加えずにご来店いただくのがおすすめです。)
-                    </label>
-
                     <label className="reservation-label">メニュー</label>
 
                     {!formData.service_id ? (

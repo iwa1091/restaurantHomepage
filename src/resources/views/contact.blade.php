@@ -16,8 +16,8 @@
         <div class="page-header">
             <h1>ご予約・お問い合わせ</h1>
             <p>
-                眉毛の自己処理はご来店の約2週間前からお控えください。<br>
-                理想は1ヶ月ほど手を加えずにご来店いただくのがおすすめです。
+                ご予約・宴会のご相談など、お気軽にお問い合わせください。<br>
+                お電話でも承っております。
             </p>
         </div>
 
@@ -158,15 +158,13 @@
                  サイドバー（スマホ視認性UP）
             ============================ -->
             <aside class="sidebar">
-
-                <!-- --- サロン情報 --- -->
+                <!-- --- 店舗情報 --- -->
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">サロン情報</h3>
+                        <h3 class="card-title">店舗情報</h3>
                     </div>
 
                     <div class="card-content contact-info">
-
                         <!-- 住所 -->
                         <div class="contact-item">
                             <span class="icon">
@@ -179,9 +177,9 @@
                             <div>
                                 <p class="info-label">住所</p>
                                 <p class="info-text">
-                                    〒290-0055<br>
-                                    千葉県市原市五井東1丁目15-3<br>
-                                    ブルメリア102
+                                    〒283-0104<br>
+                                    千葉県山武郡<br>
+                                    九十九里町片貝4772
                                 </p>
                             </div>
                         </div>
@@ -191,20 +189,20 @@
                             <span class="icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                      fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2.08L16 21.95A19.95 19.95 0 0 1 2.05 6L2.08 4.18A2 2 0 0 1 4.18 2h3a2 2 0 0 1 2 2.18A15.96 15.96 0 0 0 14.5 14.5 15.96 15.96 0 0 0 19.82 19.82a2 2 0 0 1 2.18 2.18z"/>
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
                                 </svg>
                             </span>
                             <div>
                                 <p class="info-label">電話番号</p>
                                 <p class="info-text">
-                                    <a href="tel:0436634724" class="phone-link" aria-label="電話をかける 0436-63-4724">
-                                        0436-63-4724
+                                    <a href="tel:08097049500" class="phone-link" aria-label="電話をかける 080-9704-9500">
+                                        080-9704-9500
                                     </a>
                                 </p>
                             </div>
                         </div>
 
-                        <!-- 支払い方法 -->
+                        <!-- メール -->
                         <div class="contact-item">
                             <span class="icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -214,19 +212,18 @@
                                 </svg>
                             </span>
                             <div>
-                                <p class="info-label">お支払い方法</p>
-                                <p class="info-text">現金 / クレジットカード / PayPay</p>
+                                <p class="info-label">メールアドレス</p>
+                                <p class="info-text">izurararara@yahoo.ne.jp</p>
                             </div>
                         </div>
 
-                        <!-- SNSリンク（スマホ最適化） -->
+                        <!-- SNSリンク -->
                         <div class="sns-links">
-                            <a href="https://lin.ee/あなたのLINE公式URL" target="_blank" class="sns-button line">
+                            <a href="https://lin.ee/" target="_blank" class="sns-button line">
                                 <img src="{{ asset('img/icon-line.svg') }}" alt="LINE" class="sns-icon">
-                                LINEで予約・相談
+                                LINEでお問い合わせ
                             </a>
-
-                            <a href="{{ config('services.instagram.url', 'https://www.instagram.com/') }}" target="_blank" class="sns-button instagram">
+                            <a href="https://www.instagram.com/" target="_blank" class="sns-button instagram">
                                 <img src="{{ asset('img/icon-instagram.svg') }}" alt="Instagram" class="sns-icon">
                                 Instagramを見る
                             </a>
@@ -252,20 +249,19 @@
                     <div class="card-content">
                         <div class="hours-list">
                             <div class="hours-item">
-                                <span class="day">日曜日・月曜日・火曜日（祝日等不定休）</span>
-                                <span class="time">定休日</span>
+                                <span class="day">火曜日〜日曜日</span>
+                                <span class="time">17:00〜22:00</span>
                             </div>
-
                             <div class="hours-item">
-                                <span class="day">水曜日〜土曜日</span>
-                                <span class="time">09:00〜16:00</span>
+                                <span class="day">月曜日</span>
+                                <span class="time">定休日</span>
                             </div>
                         </div>
 
                         <div class="notice-box">
                             <p>
-                                ※ 小さな子どもがおりますため、やむを得ずご予約日時の変更をお願いする場合がございます。<br>
-                                柔軟に対応いたしますので、ご理解くださいますようお願いいたします。
+                                ※ 営業時間外の日中の法事・宴会も予約にて承ります（最大30名様）。<br>
+                                お気軽にご相談ください。
                             </p>
                         </div>
                     </div>
@@ -276,94 +272,11 @@
                     <div class="quick-contact-content">
                         <h3>お急ぎの方は</h3>
                         <p>お電話でのご予約も承っております</p>
-                        <a href="tel:0436634724" class="phone-button">電話で予約</a>
+                        <a href="tel:08097049500" class="phone-button">電話で予約</a>
                     </div>
                 </div>
-
             </aside>
         </div>
     </div>
 </div>
-@endsection
-
-
-@section('scripts')
-<script>
-document.addEventListener("DOMContentLoaded", async () => {
-    const form = document.getElementById("reservationForm");
-    const messageBox = document.getElementById("reservationMessage");
-    const serviceSelect = document.getElementById("service");
-    const timeSelect = document.getElementById("time");
-
-    /* ---- メニュー一覧をAPIから取得 ---- */
-    try {
-        const res = await fetch("/api/services");
-        if (res.ok) {
-            const services = await res.json();
-            serviceSelect.innerHTML = '<option value="">メニューを選択してください</option>';
-
-            services.forEach(s => {
-                const option = document.createElement("option");
-                option.value = s.id;
-                option.textContent = `${s.name}（${s.price}円 / ${s.duration_minutes}分）`;
-                serviceSelect.appendChild(option);
-            });
-        }
-    } catch (err) {
-        console.error("サービス一覧取得失敗:", err);
-    }
-
-    /* ---- 仮の時間スロット ---- */
-    const timeSlots = [
-        "10:00","10:30","11:00","11:30","12:00","12:30",
-        "13:00","13:30","14:00","14:30","15:00","15:30",
-        "16:00","16:30","17:00","17:30","18:00"
-    ];
-    timeSelect.innerHTML = '<option value="">時間を選択してください</option>';
-    timeSlots.forEach(t => {
-        const opt = document.createElement("option");
-        opt.value = t;
-        opt.textContent = t;
-        timeSelect.appendChild(opt);
-    });
-
-    /* ---- 送信処理 ---- */
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        messageBox.textContent = "送信中...";
-
-        const payload = {
-            name: form.name.value,
-            phone: form.phone.value,
-            email: form.email.value,
-            service_id: form.service.value,
-            date: form.date.value,
-            start_time: form.time.value,
-            notes: form.message.value
-        };
-
-        try {
-            const res = await fetch("/api/reservations", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                messageBox.textContent = "ご予約が完了しました！ありがとうございます。";
-                form.reset();
-            } else {
-                const errorData = await res.json();
-                messageBox.textContent = errorData.message || "予約に失敗しました。";
-            }
-        } catch (err) {
-            console.error("通信エラー:", err);
-            messageBox.textContent = "⚠️ サーバー通信エラーが発生しました。";
-        }
-    });
-});
-</script>
 @endsection

@@ -14,6 +14,13 @@ import "../../../../css/pages/admin/product/edit.css";
  */
 export default function Edit() {
     const { product, flash } = usePage().props;
+    const MAX_IMAGE_SIZE = 500 * 1024;
+    const ALLOWED_IMAGE_TYPES = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+    ];
 
     // useForm で初期値を設定（✅ ファイル送信を確実にするため post + _method を使用）
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -26,6 +33,7 @@ export default function Edit() {
     });
 
     const [preview, setPreview] = useState(null);
+    const [imageError, setImageError] = useState(null);
 
     // 既存画像（/storage/0 などを踏まないようにフォールバック）
     const existingImageSrc =
@@ -37,6 +45,34 @@ export default function Edit() {
     // ファイル選択時のプレビュー処理
     const handleFileChange = (e) => {
         const file = e.target.files?.[0] ?? null;
+        if (!file) {
+            setData("image", null);
+            setPreview(null);
+            setImageError(null);
+            return;
+        }
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            setData("image", null);
+            setPreview(null);
+            setImageError(
+                "画像はjpeg/png/gif/webp形式のみアップロードできます。"
+            );
+            e.target.value = "";
+            return;
+        }
+
+        if (file.size > MAX_IMAGE_SIZE) {
+            setData("image", null);
+            setPreview(null);
+            setImageError(
+                "画像は500KB以内のファイルをアップロードしてください。"
+            );
+            e.target.value = "";
+            return;
+        }
+
+        setImageError(null);
         setData("image", file);
 
         if (file) {
@@ -46,12 +82,20 @@ export default function Edit() {
         }
     };
 
-    // 送信処理（✅ post + _method=patch で送信）
+    // 送信処理（✅ post + _method=patch で送信 + 明示的CSRF対策）
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        const csrfToken =
+            document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute("content") || "";
+
         post(route("admin.products.update", product.id), {
             forceFormData: true, // ✅ ファイル送信を確実にする
+            headers: {
+                "X-CSRF-TOKEN": csrfToken,
+            },
             onSuccess: () => {
                 alert("商品情報を更新しました。");
                 reset("image");
@@ -153,8 +197,11 @@ export default function Edit() {
                             type="file"
                             onChange={handleFileChange}
                             className="admin-product-edit-file"
-                            accept="image/*"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
                         />
+                        <p className="admin-product-edit-hint">
+                            jpeg・png・gif・webp形式、500KB以内のファイルを選択してください。
+                        </p>
 
                         <div className="admin-product-edit-preview-wrapper">
                             <div className="admin-product-edit-preview-inner">
@@ -166,9 +213,10 @@ export default function Edit() {
                             </div>
                         </div>
 
-                        {errors.image && (
+                        {(imageError || errors.image) && (
                             <p className="admin-product-edit-error">
-                                {errors.image}
+                                {imageError ||
+                                    "画像はjpeg/png/gif/webp形式、500KB以内でアップロードしてください。"}
                             </p>
                         )}
                     </div>
